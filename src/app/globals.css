@@ -1,26 +1,402 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@theme {
+  --color-brand: #ea4e1b;
+  --color-brand-dark: #c73f13;
+  --color-brand-light: #fef1ec;
+  --color-ink: #1d1d1b;
+  --color-ink-soft: #52514e;
+  --color-line: #e3e1de;
+  --color-paper: #f5f4f2;
+
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-doc: "Helvetica Neue", Helvetica, Arial, sans-serif;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html,
+body {
+  height: 100%;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Keep number inputs clean — spinners fight with the dense line-item grid. */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+::selection {
+  background: #ea4e1b33;
+}
+
+/* Slim scrollbars inside the two working panes. */
+.scroll-slim {
+  scrollbar-width: thin;
+  scrollbar-color: #cfccc8 transparent;
+}
+.scroll-slim::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+.scroll-slim::-webkit-scrollbar-thumb {
+  background: #cfccc8;
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+
+/* ==========================================================================
+   The document — an exact A4 rendering shared by the on-screen preview and
+   the printed PDF. Everything here is in mm so what you see is what prints.
+   ========================================================================== */
+
+.doc-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10mm;
+  transform-origin: top center;
+}
+
+.doc-page {
+  position: relative;
+  width: 210mm;
+  height: 297mm;
+  padding: 12mm 12mm 16mm;
+  background: #fff;
+  color: #1d1d1b;
+  font-family: var(--font-doc);
+  font-size: 8.6pt;
+  line-height: 1.35;
+  box-shadow: 0 2px 24px rgba(0, 0, 0, 0.13);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.doc-page__body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Only the cover visual flexes; everything else keeps its natural height. */
+.doc-page__body > * {
+  flex: none;
+}
+
+/* Pages whose content is allowed to run onto extra sheets rather than clip. */
+.doc-page--flow {
+  height: auto;
+  min-height: 297mm;
+  overflow: visible;
+}
+
+/* The cover visual takes whatever height is left on the summary page. */
+.doc-cover {
+  flex: 1 1 auto;
+  min-height: 0;
+  margin-top: 6mm;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.doc-cover img {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  object-fit: contain;
+  object-position: center;
+  display: block;
+}
+
+.doc-title {
+  border: 1.4pt solid #1d1d1b;
+  text-align: center;
+  font-size: 17pt;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  padding: 2.4mm 0;
+  text-transform: uppercase;
+}
+
+.doc-meta {
+  border: 1.4pt solid #1d1d1b;
+  border-top: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.doc-meta__cell {
+  display: flex;
+  gap: 3mm;
+  padding: 1.4mm 3mm;
+  min-height: 6.6mm;
+  align-items: baseline;
+  border-top: 0.4pt solid #e0ddd9;
+}
+
+.doc-meta__cell:nth-child(-n + 2) {
+  border-top: 0;
+}
+
+.doc-meta__cell:nth-child(even) {
+  border-left: 0.4pt solid #e0ddd9;
+}
+
+.doc-meta__label {
+  width: 24mm;
+  flex: none;
+  color: #6b6a66;
+}
+
+.doc-meta__value {
+  font-weight: 600;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.doc-section-head {
+  background: #1d1d1b;
+  color: #fff;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-size: 8.4pt;
+  padding: 1.8mm 3mm;
+}
+
+.doc-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+
+.doc-table th {
+  background: #f1efec;
+  border: 0.6pt solid #1d1d1b;
+  padding: 1.6mm 2.2mm;
+  font-size: 8pt;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  text-align: left;
+}
+
+.doc-table td {
+  border: 0.6pt solid #b9b6b2;
+  padding: 1.6mm 2.2mm;
+  vertical-align: middle;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.doc-table th {
+  overflow-wrap: anywhere;
+}
+
+.doc-table tr {
+  break-inside: avoid;
+}
+
+.doc-row-cat td {
+  background: var(--color-brand-light);
+  border-top: 0.9pt solid #1d1d1b;
+  border-bottom: 0.9pt solid #1d1d1b;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.doc-row-sub td {
+  background: #faf9f7;
+  font-weight: 700;
+}
+
+.doc-num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.doc-center {
+  text-align: center;
+}
+
+.doc-item-note {
+  display: block;
+  color: #6b6a66;
+  font-size: 7.4pt;
+  margin-top: 0.6mm;
+}
+
+.doc-tag {
+  display: inline-block;
+  border: 0.6pt solid var(--color-brand);
+  color: var(--color-brand);
+  border-radius: 999px;
+  padding: 0 1.6mm;
+  font-size: 6.8pt;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-left: 1.6mm;
+  vertical-align: 1px;
+}
+
+.doc-totals {
+  width: auto;
+  min-width: 92mm;
+  max-width: 118mm;
+  margin-left: auto;
+  border-collapse: collapse;
+}
+
+.doc-totals td:first-child {
+  white-space: nowrap;
+}
+
+.doc-totals td {
+  padding: 1.6mm 3mm;
+  border-bottom: 0.6pt solid #d9d6d2;
+}
+
+.doc-totals tr:last-child td {
+  border-bottom: 0;
+}
+
+.doc-totals__grand td {
+  background: #1d1d1b;
+  color: #fff;
+  font-size: 10.5pt;
+  font-weight: 700;
+}
+
+.doc-terms h4 {
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin: 4mm 0 1.4mm;
+  color: #1d1d1b;
+}
+
+.doc-terms p {
+  margin-bottom: 1.6mm;
+  text-align: justify;
+  orphans: 2;
+  widows: 2;
+}
+
+.doc-terms h4 {
+  break-after: avoid;
+}
+
+.doc-sign,
+.doc-totals,
+.doc-section-head {
+  break-inside: avoid;
+}
+
+.doc-footer {
+  margin-top: 6mm;
+  padding-top: 2mm;
+  border-top: 0.6pt solid #d9d6d2;
+  display: flex;
+  justify-content: space-between;
+  color: #85837f;
+  font-size: 7.2pt;
+}
+
+.doc-sign {
+  border: 0.6pt solid #1d1d1b;
+  height: 30mm;
+  padding: 2mm 3mm;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+/* ==========================================================================
+   Print. Everything that is not the document is dropped, and the ancestors
+   of #print-root are flattened so the pages start at the top of page 1.
+   ========================================================================== */
+
+@page {
+  size: A4;
+  margin: 0;
+}
+
+@media print {
+  html,
+  body {
+    background: #fff !important;
+    height: auto !important;
+  }
+
+  .no-print,
+  .doc-page-measure {
+    display: none !important;
+  }
+
+  .print-passthrough {
+    display: block !important;
+    position: static !important;
+    overflow: visible !important;
+    width: auto !important;
+    height: auto !important;
+    max-height: none !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    background: #fff !important;
+    flex: none !important;
+    box-shadow: none !important;
+  }
+
+  #print-root {
+    transform: none !important;
+    width: 210mm !important;
+  }
+
+  .doc-stack {
+    gap: 0 !important;
+    display: block !important;
+  }
+
+  .doc-page {
+    box-shadow: none !important;
+    margin: 0 !important;
+    break-after: page;
+    break-inside: avoid;
+    /* A hair under A4 so rounding can never spill a blank sheet after each page. */
+    height: 296.6mm;
+  }
+
+  .doc-page:last-child {
+    break-after: auto;
+  }
+
+  .doc-page--flow {
+    break-inside: auto;
+    height: auto;
+  }
+
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
 }
