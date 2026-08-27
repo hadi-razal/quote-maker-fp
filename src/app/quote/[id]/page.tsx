@@ -17,7 +17,7 @@ import { IconBack, IconCheck, IconDownload, IconImage, IconWarning } from "@/com
 import { computeTotals, formatMoney, validate } from "@/lib/calc";
 import { COMPANY } from "@/lib/presets";
 import { setLocalFlag, useLocalFlag } from "@/lib/localFlag";
-import { useHydrated, useQuotations } from "@/lib/store";
+import { useHydrated, useQuotations, useStorageFull } from "@/lib/store";
 
 const STEPS = [
   {
@@ -65,6 +65,7 @@ export default function QuoteEditorPage() {
   const [showIssues, setShowIssues] = useState(false);
   const [showExport, setShowExport] = useState(false);
   const previewHidden = useLocalFlag(PREVIEW_HIDDEN_KEY);
+  const storageFull = useStorageFull();
   const dragging = useRef(false);
   const shellRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -102,6 +103,18 @@ export default function QuoteEditorPage() {
   }, [onDragMove]);
 
   const issues = useMemo(() => (quote ? validate(quote) : []), [quote]);
+
+  /** How many outstanding items belong to each step, for the badges in the nav. */
+  const stepIssues = useMemo(() => {
+    const counts: Partial<Record<StepId, number>> = {};
+    for (const issue of issues) {
+      const id: StepId = issue.scope === "items" ? "boq" : "details";
+      counts[id] = (counts[id] ?? 0) + 1;
+    }
+    return counts;
+  }, [issues]);
+
+  const lineCount = quote ? quote.categories.reduce((n, c) => n + c.items.length, 0) : 0;
   const totals = useMemo(() => (quote ? computeTotals(quote) : null), [quote]);
 
   const openPrintWindow = () => {
@@ -200,7 +213,7 @@ export default function QuoteEditorPage() {
           </button>
 
           {showIssues ? (
-            <div className="absolute top-full right-0 z-40 mt-2 max-h-80 w-[min(21rem,calc(100vw-1.5rem))] overflow-auto rounded-xl border border-line bg-white p-3 shadow-xl">
+            <div className="absolute top-full right-0 z-40 mt-2 max-h-80 w-[min(21rem,calc(100vw-1.5rem))] overflow-auto rounded-md border border-line bg-white p-3 shadow-xl">
               <p className="mb-2 text-xs font-semibold tracking-wide text-ink-soft uppercase">
                 {issues.length > 0 ? "Still to fill in" : "All done"}
               </p>
@@ -248,6 +261,17 @@ export default function QuoteEditorPage() {
         </Button>
       </header>
 
+      {storageFull ? (
+        <div className="no-print flex flex-none items-start gap-2 border-b border-brand/30 bg-brand-light px-4 py-2.5 text-sm text-brand">
+          <IconWarning className="mt-0.5 h-4 w-4 flex-none" />
+          <p>
+            <strong>This browser&apos;s storage is full, so the last change was not saved.</strong>{" "}
+            Download the PDF now to be safe, then free some space — remove a few line photos, or
+            delete old quotations from the home screen.
+          </p>
+        </div>
+      ) : null}
+
       <div
         ref={shellRef}
         className={cx(
@@ -262,36 +286,51 @@ export default function QuoteEditorPage() {
             mobilePane === "editor" ? "flex" : "hidden",
           )}
         >
-          <nav className="scroll-slim flex flex-none gap-1 overflow-x-auto border-b border-line bg-white px-2 sm:px-3">
-            {STEPS.map((s, i) => (
-              <button
-                key={s.id}
-                type="button"
-                onClick={() => goToStep(s.id)}
-                className={cx(
-                  "relative flex flex-none items-center gap-1.5 px-2.5 py-2.5 text-sm font-medium whitespace-nowrap transition sm:px-3",
-                  step === s.id ? "text-brand" : "text-ink-soft hover:text-ink",
-                )}
-              >
-                <span
+          <nav className="scroll-slim flex flex-none overflow-x-auto border-b border-line bg-white px-2 sm:px-3">
+            {STEPS.map((s, i) => {
+              const problems = stepIssues[s.id] ?? 0;
+              const active = step === s.id;
+              const done = problems === 0 && (s.id === "details" || s.id === "boq");
+              return (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => goToStep(s.id)}
                   className={cx(
-                    "flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-bold",
-                    step === s.id ? "bg-brand text-white" : "bg-paper text-ink-soft",
+                    "relative flex flex-none items-center gap-1.5 px-2.5 py-2.5 text-sm font-medium whitespace-nowrap transition sm:px-3",
+                    active ? "text-brand" : "text-ink-soft hover:text-ink",
                   )}
                 >
-                  {i + 1}
-                </span>
-                {s.label}
-                {s.id === "boq" ? (
-                  <span className="rounded bg-paper px-1.5 py-0.5 text-xs tabular-nums">
-                    {quote.categories.reduce((n, c) => n + c.items.length, 0)}
+                  <span
+                    className={cx(
+                      "flex h-5 w-5 items-center justify-center rounded-sm text-[11px] font-bold",
+                      active
+                        ? "bg-brand text-white"
+                        : problems > 0
+                          ? "bg-brand-light text-brand"
+                          : done
+                            ? "bg-emerald-50 text-emerald-700"
+                            : "bg-paper text-ink-soft",
+                    )}
+                  >
+                    {!active && done ? <IconCheck className="h-3 w-3" /> : i + 1}
                   </span>
-                ) : null}
-                {step === s.id ? (
-                  <span className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-brand" />
-                ) : null}
-              </button>
-            ))}
+                  {s.label}
+                  {problems > 0 ? (
+                    <span className="rounded-sm bg-brand-light px-1.5 py-0.5 text-xs font-semibold text-brand tabular-nums">
+                      {problems}
+                    </span>
+                  ) : s.id === "boq" ? (
+                    <span className="rounded-sm bg-paper px-1.5 py-0.5 text-xs tabular-nums">
+                      {lineCount}
+                    </span>
+                  ) : null}
+                  {active ? (
+                    <span className="absolute inset-x-2 -bottom-px h-0.5 rounded-sm bg-brand" />
+                  ) : null}
+                </button>
+              );
+            })}
           </nav>
 
           <p className="flex-none border-b border-line bg-white/70 px-3 py-2 text-xs text-ink-soft sm:px-4">
@@ -302,7 +341,7 @@ export default function QuoteEditorPage() {
           </p>
 
           <div ref={scrollRef} className="scroll-slim flex-1 overflow-auto p-3 sm:p-4">
-            <div className={previewHidden ? "mx-auto w-full max-w-3xl" : ""}>
+            <div className={previewHidden ? "mx-auto w-full max-w-5xl" : ""}>
               {step === "details" ? <DetailsTab quote={quote} /> : null}
               {step === "boq" ? <BoqTab quote={quote} /> : null}
               {step === "visuals" ? <VisualsTab quote={quote} /> : null}
@@ -345,7 +384,7 @@ export default function QuoteEditorPage() {
             previewHidden ? "" : "lg:flex",
           )}
         >
-          <span className="h-8 w-0.5 rounded-full bg-white/70" />
+          <span className="h-8 w-0.5 rounded-sm bg-white/70" />
         </div>
 
         <section

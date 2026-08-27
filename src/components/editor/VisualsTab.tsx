@@ -7,6 +7,11 @@ import { approxSize, fileToDataUrl } from "@/lib/image";
 import { useQuotations } from "@/lib/store";
 import type { Quotation } from "@/lib/types";
 
+function formatBytes(bytes: number): string {
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+}
+
 export function VisualsTab({ quote }: { quote: Quotation }) {
   const { addImage, updateImage, removeImage, moveImage } = useQuotations();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -30,6 +35,14 @@ export function VisualsTab({ quote }: { quote: Quotation }) {
     }
   };
 
+  const linePhotos = quote.categories.flatMap((c) =>
+    c.items.filter((i) => i.image).map((i) => i.image!.dataUrl),
+  );
+  const totalBytes = [...quote.images.map((i) => i.dataUrl), ...linePhotos].reduce(
+    (n, dataUrl) => n + Math.round((dataUrl.length * 3) / 4),
+    0,
+  );
+
   return (
     <div className="space-y-4">
       <SectionCard
@@ -48,7 +61,7 @@ export function VisualsTab({ quote }: { quote: Quotation }) {
             void ingest(e.dataTransfer.files);
           }}
           className={cx(
-            "flex flex-col items-center justify-center rounded-xl border-2 border-dashed px-4 py-8 text-center transition",
+            "flex flex-col items-center justify-center rounded-md border-2 border-dashed px-4 py-8 text-center transition",
             dragging ? "border-brand bg-brand-light" : "border-line bg-paper/50",
           )}
         >
@@ -77,12 +90,12 @@ export function VisualsTab({ quote }: { quote: Quotation }) {
 
         <div className="mt-3 space-y-2">
           {quote.images.map((img, i) => (
-            <div key={i} className="flex gap-3 rounded-lg border border-line bg-white p-2.5">
+            <div key={i} className="flex gap-3 rounded-md border border-line bg-white p-2.5">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={img.dataUrl}
                 alt={img.caption || img.name || "visual"}
-                className="h-16 w-24 flex-none rounded object-cover"
+                className="h-16 w-24 flex-none rounded-sm object-cover"
               />
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
@@ -129,6 +142,16 @@ export function VisualsTab({ quote }: { quote: Quotation }) {
             </p>
           ) : null}
         </div>
+
+        <p className="mt-3 rounded-md bg-paper p-2.5 text-xs text-ink-soft">
+          Pictures in this quotation:{" "}
+          <strong className="text-ink">{formatBytes(totalBytes)}</strong>
+          {linePhotos.length > 0
+            ? ` — ${quote.images.length} full-page and ${linePhotos.length} line photo${linePhotos.length === 1 ? "" : "s"}.`
+            : "."}{" "}
+          Everything is stored in this browser, so keep an eye on it once a quotation runs into
+          several megabytes.
+        </p>
       </SectionCard>
     </div>
   );

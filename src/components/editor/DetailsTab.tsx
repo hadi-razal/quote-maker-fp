@@ -190,7 +190,7 @@ export function DetailsTab({ quote }: { quote: Quotation }) {
           </Field>
         </div>
 
-        <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-1.5 rounded-lg bg-paper p-3 text-sm sm:grid-cols-4">
+        <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-1.5 rounded-md bg-paper p-3 text-sm sm:grid-cols-4">
           {[
             ["Subtotal", totals.subtotal],
             ["Discount", totals.discount === 0 ? 0 : -totals.discount],

@@ -3,7 +3,11 @@
  * live in localStorage, so a 6 MB camera render has to come down to ~200 KB
  * before it goes in — 1600px wide is still sharp at A4.
  */
-export async function fileToDataUrl(file: File, maxWidth = 1600): Promise<string> {
+export async function fileToDataUrl(
+  file: File,
+  maxWidth = 1600,
+  quality = 0.85,
+): Promise<string> {
   const raw = await new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(String(reader.result));
@@ -18,7 +22,7 @@ export async function fileToDataUrl(file: File, maxWidth = 1600): Promise<string
     el.src = raw;
   });
 
-  if (img.width <= maxWidth && raw.length < 400_000) return raw;
+  if (img.width <= maxWidth && raw.length < 120_000) return raw;
 
   const scale = Math.min(1, maxWidth / img.width);
   const canvas = document.createElement("canvas");
@@ -31,7 +35,7 @@ export async function fileToDataUrl(file: File, maxWidth = 1600): Promise<string
   ctx.fillRect(0, 0, canvas.width, canvas.height);
   ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-  return canvas.toDataURL("image/jpeg", 0.85);
+  return canvas.toDataURL("image/jpeg", quality);
 }
 
 export function approxSize(dataUrl: string): string {

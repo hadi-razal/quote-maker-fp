@@ -139,11 +139,16 @@ const variants: Record<Variant, string> = {
 export function Button({
   variant = "secondary",
   className,
+  ref,
   ...props
-}: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant }) {
+}: ButtonHTMLAttributes<HTMLButtonElement> & {
+  variant?: Variant;
+  ref?: Ref<HTMLButtonElement>;
+}) {
   return (
     <button
       type="button"
+      ref={ref}
       {...props}
       className={cx(
         "inline-flex items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium",
@@ -190,17 +195,17 @@ export function Toggle({
     <button
       type="button"
       onClick={() => onChange(!checked)}
-      className="flex w-full items-start gap-3 rounded-lg border border-line bg-white p-3 text-left transition hover:border-ink/20"
+      className="flex w-full items-start gap-3 rounded-md border border-line bg-white p-3 text-left transition hover:border-ink/20"
     >
       <span
         className={cx(
-          "mt-0.5 flex h-5 w-9 flex-none items-center rounded-full p-0.5 transition",
+          "mt-0.5 flex h-5 w-9 flex-none items-center rounded-sm p-0.5 transition",
           checked ? "bg-brand" : "bg-line",
         )}
       >
         <span
           className={cx(
-            "h-4 w-4 rounded-full bg-white shadow transition-transform",
+            "h-4 w-4 rounded-sm bg-white shadow transition-transform",
             checked && "translate-x-4",
           )}
         />
@@ -227,7 +232,7 @@ export function SectionCard({
   children: ReactNode;
 }) {
   return (
-    <section className="rounded-xl border border-line bg-white p-4 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
+    <section className="rounded-md border border-line bg-white p-4 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
       <header className="mb-3 flex items-start justify-between gap-3">
         <div>
           <h3 className="text-sm font-semibold text-ink">{title}</h3>

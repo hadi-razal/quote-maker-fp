@@ -68,11 +68,25 @@ screenshot — and the same window prints on paper if that is what you want.
 | Summary | Logo, project box, the first picture, a category-by-category summary, grand total |
 | Visuals | Any further pictures, two to a page |
 | Bill of Quantities | Every line, split across as many pages as it takes, with the totals at the end |
+| Line photos | An extra column beside the description — it only exists when at least one line has a photo |
 | Terms & Conditions | The standard Fairplatz text, plus contractor / customer signature blocks |
 
 Pagination is measured, not guessed: every row is rendered off-screen, measured in
 real pixels, and only then assigned to a page — which is why nothing ever lands on
 top of the footer, and why the preview and the PDF agree.
+
+## Line photos
+
+Any line can carry its own photo — a product shot, a finish sample, a reference.
+Use the **Photo** button on that line in step 2. The picture column appears in the
+printed table by itself the moment one line has a photo, and disappears again if
+they are all removed, so a plain quotation stays plain. **Show line photos** in
+step 5 turns the whole column off without deleting anything.
+
+Line photos are stored at 640px and squeezed harder than the full-page visuals,
+because dozens of them share the browser's storage with everything else. The
+Pictures step shows what a quotation weighs, and if the browser store ever fills
+up the editor says so rather than losing the change quietly.
 
 ## Pricing options
 
@@ -101,6 +115,40 @@ uploaded; pictures are downsized to 1600px and embedded in the quotation. Cleari
 site data clears the quotations, so treat a downloaded PDF as the record of
 anything you have sent.
 
+## Icons, install and link previews
+
+Everything a browser or phone asks for is generated from the Fairplatz mark:
+
+| File | Used by |
+| --- | --- |
+| `src/app/favicon.ico` | Browser tabs, bookmarks, older browsers (16/32/48) |
+| `src/app/icon.png` | Modern browsers' tab icon |
+| `src/app/apple-icon.png` | iPhone / iPad "Add to Home Screen" (180px, solid white — iOS does not honour transparency) |
+| `public/icons/icon-192.png`, `icon-512.png` | Android and desktop install icons |
+| `public/icons/maskable-512.png` | Android adaptive icons — art sits inside the safe zone so the circular crop doesn't clip it |
+| `src/app/manifest.ts` | `/manifest.webmanifest` — name, colours, standalone display, install icons |
+| `src/app/opengraph-image.png`, `twitter-image.png` | The 1200×630 card shown when the link is pasted into WhatsApp, Slack, LinkedIn or iMessage |
+
+To regenerate them after a brand change, replace `public/brand/fairplatz-logo.png`
+and re-run the scripts in the project history — or just re-crop the mark and
+re-export at the sizes in the table.
+
+## SEO
+
+Full metadata is in `src/app/layout.tsx`: title template, description, keywords,
+canonical URL, Open Graph and Twitter cards, Apple web-app tags and theme colour.
+
+**Search engines are deliberately blocked.** `SITE.indexable` in `src/lib/site.ts`
+is `false`, which sends `noindex, nofollow` and a `Disallow: /` robots.txt. This
+is an internal tool behind a sign-in — being findable on Google gains nothing and
+would put the company's pricing tool in public results. Flip that one flag to
+`true` if it ever needs to be indexed; the robots and sitemap routes follow it
+automatically.
+
+Set `NEXT_PUBLIC_SITE_URL` to the real domain so canonical links and preview
+images resolve. On Vercel this is filled in automatically unless you use a custom
+domain.
+
 ## Stack
 
 Next.js 16 (App Router) · React 19 · TypeScript · Tailwind v4 · Zustand
@@ -111,7 +159,10 @@ src/lib/types.ts      the quotation model
 src/lib/calc.ts       totals, money and date formatting, validation
 src/lib/presets.ts    default categories, the scope library, standard terms
 src/lib/store.ts      quotation CRUD, versions, persistence
+src/lib/auth.ts       the local sign-in gate
+src/lib/site.ts       metadata, canonical URL, the indexable flag
 src/components/document/  the A4 document and its measured pagination
 src/components/editor/    the five editing steps
+src/components/ui/confirm.tsx  the in-app confirmation dialog (no browser popups)
 ```
 # quote-maker-fp

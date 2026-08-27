@@ -1,5 +1,6 @@
 "use client";
 
+import { askConfirm } from "@/components/ui/confirm";
 import { Button, SectionCard, Textarea } from "@/components/ui/controls";
 import { DEFAULT_TERMS } from "@/lib/presets";
 import { useQuotations } from "@/lib/store";
@@ -27,9 +28,14 @@ export function TermsTab({ quote }: { quote: Quotation }) {
         description="A line starting with a number and a dash (e.g. “3 - PAYMENT”) prints as a heading. Blank lines separate blocks."
         action={
           <Button
-            onClick={() => {
-              if (confirm("Replace the terms with the Fairplatz standard text?"))
-                update(quote.id, { terms: DEFAULT_TERMS });
+            onClick={async () => {
+              const ok = await askConfirm({
+                title: "Restore the standard terms?",
+                message:
+                  "Anything you have written or changed here is replaced by the Fairplatz standard text.",
+                confirmLabel: "Restore",
+              });
+              if (ok) update(quote.id, { terms: DEFAULT_TERMS });
             }}
           >
             Reset to standard

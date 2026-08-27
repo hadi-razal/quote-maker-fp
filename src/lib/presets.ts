@@ -188,4 +188,7 @@ export const COMPANY = {
   tagline: "exhibitions | events | expos",
   logo: "/brand/fairplatz-logo.png",
   mark: "/brand/fairplatz-mark.png",
+  /** For dark backgrounds — the neutrals are inverted, the orange is untouched. */
+  logoLight: "/brand/fairplatz-logo-light.png",
+  markLight: "/brand/fairplatz-mark-light.png",
 };

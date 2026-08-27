@@ -45,7 +45,7 @@ export function LibraryPicker({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="flex h-[80vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl">
+      <div className="flex h-[80vh] w-full max-w-2xl flex-col overflow-hidden rounded-md bg-white shadow-2xl">
         <header className="flex items-center justify-between border-b border-line px-4 py-3">
           <div>
             <h2 className="text-sm font-semibold">Add from scope library</h2>
@@ -107,7 +107,7 @@ export function LibraryPicker({
                           })
                         }
                         className={cx(
-                          "flex w-full items-start gap-2.5 rounded-lg border p-2.5 text-left text-sm transition",
+                          "flex w-full items-start gap-2.5 rounded-md border p-2.5 text-left text-sm transition",
                           on
                             ? "border-brand bg-brand-light"
                             : "border-line bg-white hover:border-ink/20",
@@ -115,7 +115,7 @@ export function LibraryPicker({
                       >
                         <span
                           className={cx(
-                            "mt-0.5 flex h-4 w-4 flex-none items-center justify-center rounded border text-white",
+                            "mt-0.5 flex h-4 w-4 flex-none items-center justify-center rounded-sm border text-white",
                             on ? "border-brand bg-brand" : "border-line",
                           )}
                         >
@@ -133,7 +133,7 @@ export function LibraryPicker({
                           ) : null}
                         </span>
                         <span className="flex-1">{item.description}</span>
-                        <span className="flex-none rounded bg-black/5 px-1.5 py-0.5 text-xs text-ink-soft">
+                        <span className="flex-none rounded-sm bg-black/5 px-1.5 py-0.5 text-xs text-ink-soft">
                           {item.unit}
                         </span>
                       </button>

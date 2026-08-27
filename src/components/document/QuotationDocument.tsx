@@ -1,6 +1,6 @@
 "use client";
 
-import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { DocPage, MM } from "./DocPage";
 import {
   categoryTotal,
@@ -56,8 +56,18 @@ function buildRows(quote: Quotation): DocRow[] {
 /* Table pieces                                                                */
 /* -------------------------------------------------------------------------- */
 
+/** Line photos take a column only when the quotation actually uses them. */
+function usesItemPhotos(quote: Quotation): boolean {
+  return (
+    quote.showItemPhotos && quote.categories.some((c) => c.items.some((i) => Boolean(i.image)))
+  );
+}
+
 /** Printable width of an A4 page with the document's 12mm side margins. */
 const CONTENT_WIDTH_MM = 210 - 24;
+
+/** Width of the optional line-photo column. */
+const PHOTO_COL_MM = 26;
 
 /**
  * Money columns are sized from the longest number they actually hold, so a
@@ -87,6 +97,7 @@ function ColGroup({ quote }: { quote: Quotation }) {
 
   const qtyLong = quote.categories.some((c) => c.items.some((i) => formatNumber(i.qty).length > 6));
   const qtyMm = quote.showQty ? (qtyLong ? 20 : 15) : 0;
+  const photoMm = usesItemPhotos(quote) ? PHOTO_COL_MM : 0;
 
   let amountMm = moneyColumnMm(amounts, quote.currency, 26);
   let rateMm = quote.showItemRates ? moneyColumnMm(rates, quote.currency, 22) : 0;
@@ -96,7 +107,7 @@ function ColGroup({ quote }: { quote: Quotation }) {
   const CODE_MM = 13;
   const UNIT_MM = 15;
   const DESCRIPTION_MIN_MM = 62;
-  const available = CONTENT_WIDTH_MM - CODE_MM - UNIT_MM - qtyMm - DESCRIPTION_MIN_MM;
+  const available = CONTENT_WIDTH_MM - CODE_MM - UNIT_MM - qtyMm - photoMm - DESCRIPTION_MIN_MM;
   const wanted = amountMm + rateMm;
   if (wanted > available) {
     const shrink = available / wanted;
@@ -107,6 +118,7 @@ function ColGroup({ quote }: { quote: Quotation }) {
   return (
     <colgroup>
       <col style={{ width: `${CODE_MM}mm` }} />
+      {photoMm ? <col style={{ width: `${photoMm}mm` }} /> : null}
       <col />
       {quote.showQty ? <col style={{ width: `${qtyMm}mm` }} /> : null}
       <col style={{ width: `${UNIT_MM}mm` }} />
@@ -121,6 +133,7 @@ function TableHead({ quote, measure }: { quote: Quotation; measure?: boolean }) 
     <thead data-measure={measure ? "thead" : undefined}>
       <tr>
         <th className="doc-center">Item</th>
+        {usesItemPhotos(quote) ? <th className="doc-center">Photo</th> : null}
         <th>Description</th>
         {quote.showQty ? <th className="doc-center">Qty</th> : null}
         <th className="doc-center">Unit</th>
@@ -132,8 +145,9 @@ function TableHead({ quote, measure }: { quote: Quotation; measure?: boolean }) 
 }
 
 function Row({ row, quote }: { row: DocRow; quote: Quotation }) {
-  // item code, description, [qty], unit, [rate], amount
-  const columns = 4 + (quote.showQty ? 1 : 0) + (quote.showItemRates ? 1 : 0);
+  // item code, [photo], description, [qty], unit, [rate], amount
+  const photos = usesItemPhotos(quote);
+  const columns = 4 + (photos ? 1 : 0) + (quote.showQty ? 1 : 0) + (quote.showItemRates ? 1 : 0);
   // Everything between the item code and the amount.
   const middleSpan = columns - 2;
 
@@ -171,6 +185,14 @@ function Row({ row, quote }: { row: DocRow; quote: Quotation }) {
   return (
     <tr>
       <td className="doc-center">{code}</td>
+      {photos ? (
+        <td className="doc-center doc-photo">
+          {item.image ? (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img src={item.image.dataUrl} alt="" />
+          ) : null}
+        </td>
+      ) : null}
       <td>
         {item.description || <span style={{ color: "#c0bdb9" }}>—</span>}
         {item.optional ? <span className="doc-tag">Optional</span> : null}
@@ -454,6 +476,32 @@ interface Measured {
 function useRowPages(quote: Quotation, rows: DocRow[]) {
   const measureRef = useRef<HTMLDivElement>(null);
   const [pages, setPages] = useState<DocRow[][]>([rows]);
+  const [, remeasure] = useState(0);
+
+  /**
+   * A row's height can settle *after* React has finished rendering — a line
+   * photo finishes decoding, a web font swaps in, a long description rewraps.
+   * Watching the measuring copy for any size change re-runs the page split, so
+   * the preview and the PDF catch up on their own instead of showing yesterday's
+   * pagination until the next keystroke.
+   */
+  useEffect(() => {
+    const root = measureRef.current;
+    if (!root) return;
+
+    const observer = new ResizeObserver(() => remeasure((n) => n + 1));
+    observer.observe(root);
+
+    let cancelled = false;
+    void document.fonts?.ready.then(() => {
+      if (!cancelled) remeasure((n) => n + 1);
+    });
+
+    return () => {
+      cancelled = true;
+      observer.disconnect();
+    };
+  }, []);
 
   // eslint-disable-next-line react-hooks/exhaustive-deps -- deliberately every render; see setPages below
   useLayoutEffect(() => {

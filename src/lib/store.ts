@@ -2,12 +2,68 @@
 
 import { useSyncExternalStore } from "react";
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { createJSONStorage, persist } from "zustand/middleware";
 import type { Category, LineItem, Quotation, QuotationImage } from "./types";
 import { DEFAULT_CATEGORY_TITLES, DEFAULT_TERMS } from "./presets";
 
 /** A quotation can be revised up to this many times before you start a new one. */
 export const MAX_VERSIONS = 10;
+
+/**
+ * localStorage is finite (~5 MB) and photos eat it fast, so a failed write is a
+ * real possibility rather than a theoretical one. Swallowing it silently would
+ * lose someone's afternoon, so we record it and the editor shows a warning.
+ */
+let storageFull = false;
+const storageListeners = new Set<() => void>();
+
+const guardedStorage: Storage = {
+  get length() {
+    return localStorage.length;
+  },
+  clear: () => localStorage.clear(),
+  key: (i) => localStorage.key(i),
+  getItem: (name) => {
+    try {
+      return localStorage.getItem(name);
+    } catch {
+      return null;
+    }
+  },
+  setItem: (name, value) => {
+    try {
+      localStorage.setItem(name, value);
+      if (storageFull) {
+        storageFull = false;
+        storageListeners.forEach((l) => l());
+      }
+    } catch {
+      if (!storageFull) {
+        storageFull = true;
+        storageListeners.forEach((l) => l());
+      }
+    }
+  },
+  removeItem: (name) => {
+    try {
+      localStorage.removeItem(name);
+    } catch {
+      /* nothing to remove */
+    }
+  },
+};
+
+/** True when the last save could not be written because the browser store is full. */
+export function useStorageFull(): boolean {
+  return useSyncExternalStore(
+    (listener) => {
+      storageListeners.add(listener);
+      return () => storageListeners.delete(listener);
+    },
+    () => storageFull,
+    () => false,
+  );
+}
 
 export function uid(): string {
   if (typeof crypto !== "undefined" && "randomUUID" in crypto) return crypto.randomUUID();
@@ -87,6 +143,7 @@ export function newQuotation(ref: string, starter: boolean): Quotation {
     showSummaryPage: true,
     showItemRates: false,
     showQty: true,
+    showItemPhotos: true,
     showTermsPage: true,
     showSignatures: true,
   };
@@ -284,7 +341,8 @@ export const useQuotations = create<QuotationState>()(
     },
     {
       name: "fairplatz-quotations",
-      version: 2,
+      version: 3,
+      storage: createJSONStorage(() => guardedStorage),
       migrate: (persisted, from) => {
         const state = persisted as { quotations?: Quotation[] };
         if (from < 2) {
@@ -293,6 +351,12 @@ export const useQuotations = create<QuotationState>()(
             familyId: q.familyId ?? q.id,
             version: q.version ?? 1,
             versionNote: q.versionNote ?? "",
+          }));
+        }
+        if (from < 3) {
+          state.quotations = (state.quotations ?? []).map((q) => ({
+            ...q,
+            showItemPhotos: q.showItemPhotos ?? true,
           }));
         }
         return state as QuotationState;

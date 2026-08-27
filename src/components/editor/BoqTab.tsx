@@ -5,13 +5,16 @@ import { Button, IconButton, Select, TextInput, Textarea, cx } from "@/component
 import {
   IconCopy,
   IconDown,
+  IconImage,
   IconLibrary,
   IconPlus,
   IconTrash,
   IconUp,
 } from "@/components/ui/icons";
+import { askConfirm } from "@/components/ui/confirm";
 import { LibraryPicker } from "./LibraryPicker";
 import { categoryTotal, formatMoney, itemCode, lineAmount } from "@/lib/calc";
+import { approxSize, fileToDataUrl } from "@/lib/image";
 import { DEFAULT_CATEGORY_TITLES, UNITS } from "@/lib/presets";
 import { useQuotations } from "@/lib/store";
 import type { Category, LineItem, Quotation } from "@/lib/types";
@@ -40,14 +43,33 @@ function ItemRow({
   const { updateItem, removeItem, moveItem, addItem } = useQuotations();
   const [showNote, setShowNote] = useState(Boolean(item.note?.trim()));
   const noteRef = useRef<HTMLInputElement>(null);
+  const photoRef = useRef<HTMLInputElement>(null);
+  const [photoError, setPhotoError] = useState<string | null>(null);
   const set = (patch: Partial<LineItem>) => updateItem(quote.id, cat.id, item.id, patch);
+
+  const choosePhoto = async (file: File | undefined) => {
+    if (!file) return;
+    setPhotoError(null);
+    if (!file.type.startsWith("image/")) {
+      setPhotoError("That file is not an image.");
+      return;
+    }
+    try {
+      // Line photos print about 26mm wide, so they are stored small — dozens of
+      // them still have to fit in the browser's storage alongside everything else.
+      const dataUrl = await fileToDataUrl(file, 640, 0.72);
+      set({ image: { dataUrl, name: file.name } });
+    } catch {
+      setPhotoError("Could not read that image.");
+    }
+  };
   const amount = lineAmount(item);
   const itemised = cat.priceMode === "itemised";
 
   return (
     <div
       className={cx(
-        "rounded-lg border p-2.5 transition",
+        "rounded-md border p-2.5 transition",
         item.optional ? "border-brand/40 bg-brand-light/40" : "border-line bg-white",
       )}
     >
@@ -126,17 +148,27 @@ function ItemRow({
                 setShowNote(true);
                 requestAnimationFrame(() => noteRef.current?.focus());
               }}
-              className="rounded px-2 py-1 text-xs font-medium text-ink-soft transition hover:bg-black/5 hover:text-ink"
+              className="rounded-sm px-2 py-1 text-xs font-medium text-ink-soft transition hover:bg-black/5 hover:text-ink"
               title="Add a small note under this line"
             >
               + Note
+            </button>
+          )}
+          {item.image ? null : (
+            <button
+              type="button"
+              onClick={() => photoRef.current?.click()}
+              className="flex items-center gap-1 rounded-sm px-2 py-1 text-xs font-medium text-ink-soft transition hover:bg-black/5 hover:text-ink"
+              title="Add a photo for this line — it prints in its own column"
+            >
+              <IconImage className="h-3.5 w-3.5" /> Photo
             </button>
           )}
           <button
             type="button"
             onClick={() => set({ optional: !item.optional })}
             className={cx(
-              "rounded px-2 py-1 text-xs font-medium transition",
+              "rounded-sm px-2 py-1 text-xs font-medium transition",
               item.optional
                 ? "bg-brand text-white"
                 : "text-ink-soft hover:bg-black/5 hover:text-ink",
@@ -168,6 +200,7 @@ function ItemRow({
                 unit: item.unit,
                 rate: item.rate,
                 note: item.note,
+                image: item.image,
                 optional: item.optional,
               })
             }
@@ -183,6 +216,48 @@ function ItemRow({
           </IconButton>
         </div>
       </div>
+
+      <input
+        ref={photoRef}
+        type="file"
+        accept="image/*"
+        hidden
+        onChange={(e) => {
+          void choosePhoto(e.target.files?.[0]);
+          e.target.value = "";
+        }}
+      />
+
+      {item.image ? (
+        <div className="mt-2 flex items-center gap-3 rounded-md border border-line bg-paper/60 p-2 pl-0 sm:ml-11">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={item.image.dataUrl}
+            alt=""
+            className="h-12 w-16 flex-none rounded-sm border border-line bg-white object-contain"
+          />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-xs font-medium text-ink">
+              {item.image.name || "Line photo"}
+            </p>
+            <p className="text-xs text-ink-soft">
+              {approxSize(item.image.dataUrl)} · prints beside this line
+            </p>
+          </div>
+          <Button onClick={() => photoRef.current?.click()} className="px-2 py-1 text-xs">
+            Replace
+          </Button>
+          <IconButton
+            label="Remove photo"
+            className="hover:bg-brand-light hover:text-brand"
+            onClick={() => set({ image: undefined })}
+          >
+            <IconTrash />
+          </IconButton>
+        </div>
+      ) : null}
+
+      {photoError ? <p className="mt-1.5 text-xs text-brand sm:ml-11">{photoError}</p> : null}
 
       {showNote ? (
         <div className="mt-2 pl-0 sm:pl-11">
@@ -219,8 +294,8 @@ function CategoryCard({
   const total = categoryTotal(cat);
 
   return (
-    <section className="rounded-xl border border-line bg-paper/60 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
-      <header className="flex flex-wrap items-center gap-2 rounded-t-xl border-b border-line bg-white px-3 py-2.5">
+    <section className="rounded-md border border-line bg-paper/60 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
+      <header className="flex flex-wrap items-center gap-2 rounded-t-md border-b border-line bg-white px-3 py-2.5">
         <button
           type="button"
           onClick={() => setCollapsed((c) => !c)}
@@ -288,9 +363,21 @@ function CategoryCard({
           <IconButton
             label="Delete category"
             className="hover:bg-brand-light hover:text-brand"
-            onClick={() => {
-              if (confirm(`Delete "${cat.title || "this category"}" and all of its lines?`))
-                removeCategory(quote.id, cat.id);
+            onClick={async () => {
+              const ok = await askConfirm({
+                title: `Delete "${cat.title || "this category"}"?`,
+                message:
+                  "The category and every line inside it are removed. This cannot be undone.",
+                details:
+                  cat.items.length > 0
+                    ? [
+                        `${cat.items.length} line${cat.items.length === 1 ? "" : "s"} will go with it`,
+                      ]
+                    : undefined,
+                confirmLabel: "Delete category",
+                tone: "danger",
+              });
+              if (ok) removeCategory(quote.id, cat.id);
             }}
           >
             <IconTrash />
@@ -317,7 +404,7 @@ function CategoryCard({
           ))}
 
           {cat.items.length === 0 ? (
-            <p className="rounded-lg border border-dashed border-line py-6 text-center text-sm text-ink-soft">
+            <p className="rounded-md border border-dashed border-line py-6 text-center text-sm text-ink-soft">
               No lines yet.
             </p>
           ) : null}
@@ -375,7 +462,7 @@ export function BoqTab({ quote }: { quote: Quotation }) {
         />
       ))}
 
-      <div className="rounded-xl border border-dashed border-line bg-white p-3">
+      <div className="rounded-md border border-dashed border-line bg-white p-3">
         <div className="flex gap-2">
           <TextInput
             placeholder="New category name…"
@@ -407,7 +494,7 @@ export function BoqTab({ quote }: { quote: Quotation }) {
                 key={t}
                 type="button"
                 onClick={() => addCategory(quote.id, t)}
-                className="rounded-full border border-line bg-white px-2.5 py-1 text-xs text-ink-soft transition hover:border-brand hover:text-brand"
+                className="rounded-sm border border-line bg-white px-2.5 py-1 text-xs text-ink-soft transition hover:border-brand hover:text-brand"
               >
                 + {t}
               </button>

@@ -2,6 +2,13 @@ export type CurrencyCode = "AED" | "SAR" | "USD" | "EUR" | "GBP" | "QAR" | "OMR"
 
 export type DiscountType = "none" | "percent" | "amount";
 
+export interface QuotationImage {
+  /** base64 data URL — kept inline so the document is fully self-contained. */
+  dataUrl: string;
+  caption?: string;
+  name?: string;
+}
+
 export interface LineItem {
   id: string;
   /** Free-text description of the scope of work. Required. */
@@ -14,6 +21,8 @@ export interface LineItem {
   rate: number | null;
   /** Optional extra line printed in small text under the description. */
   note?: string;
+  /** Optional photo for this line — a product shot, a finish sample, a reference. */
+  image?: QuotationImage;
   /** Optional items are printed with an "Optional" tag and excluded from the totals. */
   optional?: boolean;
 }
@@ -30,12 +39,6 @@ export interface Category {
   items: LineItem[];
 }
 
-export interface QuotationImage {
-  /** base64 data URL — kept inline so the document is fully self-contained. */
-  dataUrl: string;
-  caption?: string;
-  name?: string;
-}
 
 export interface Quotation {
   id: string;
@@ -79,6 +82,8 @@ export interface Quotation {
   showSummaryPage: boolean;
   showItemRates: boolean;
   showQty: boolean;
+  /** Line photos only print when this is on and at least one line actually has one. */
+  showItemPhotos: boolean;
   showTermsPage: boolean;
   showSignatures: boolean;
 }

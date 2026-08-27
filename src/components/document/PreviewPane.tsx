@@ -68,7 +68,7 @@ export function PreviewPane({ quote, onHide }: { quote: Quotation; onHide?: () =
           <button
             type="button"
             onClick={() => setZoom(1)}
-            className="min-w-[3.2rem] rounded px-1.5 py-1 text-xs tabular-nums hover:bg-white/10"
+            className="min-w-[3.2rem] rounded-sm px-1.5 py-1 text-xs tabular-nums hover:bg-white/10"
             title="Reset to fit width"
           >
             {Math.round(scale * 100)}%

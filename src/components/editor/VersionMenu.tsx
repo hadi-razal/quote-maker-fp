@@ -41,7 +41,7 @@ export function VersionMenu({ quote }: { quote: Quotation }) {
         title="Switch between versions of this quotation"
         className="flex items-center gap-1.5 rounded-md border border-line bg-white px-2.5 py-1.5 text-sm font-medium text-ink transition hover:border-ink/30"
       >
-        <span className="rounded bg-ink px-1.5 py-0.5 text-xs font-bold text-white">
+        <span className="rounded-sm bg-ink px-1.5 py-0.5 text-xs font-bold text-white">
           V{quote.version}
         </span>
         <span className="hidden text-ink-soft sm:inline">of {versions.length}</span>
@@ -58,7 +58,7 @@ export function VersionMenu({ quote }: { quote: Quotation }) {
       </button>
 
       {open ? (
-        <div className="absolute top-full right-0 z-40 mt-2 w-[min(22rem,calc(100vw-1.5rem))] overflow-hidden rounded-xl border border-line bg-white shadow-xl">
+        <div className="absolute top-full right-0 z-40 mt-2 w-[min(22rem,calc(100vw-1.5rem))] overflow-hidden rounded-md border border-line bg-white shadow-xl">
           <p className="border-b border-line px-3 py-2 text-xs text-ink-soft">
             Each version keeps its own prices and items. Nothing you do in one changes another.
           </p>
@@ -76,13 +76,13 @@ export function VersionMenu({ quote }: { quote: Quotation }) {
                       if (!current) router.push(`/quote/${v.id}`);
                     }}
                     className={cx(
-                      "flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-left transition",
+                      "flex w-full items-center gap-3 rounded-md px-2.5 py-2 text-left transition",
                       current ? "bg-brand-light" : "hover:bg-paper",
                     )}
                   >
                     <span
                       className={cx(
-                        "flex h-7 w-9 flex-none items-center justify-center rounded text-xs font-bold",
+                        "flex h-7 w-9 flex-none items-center justify-center rounded-sm text-xs font-bold",
                         current ? "bg-brand text-white" : "bg-paper text-ink-soft",
                       )}
                     >

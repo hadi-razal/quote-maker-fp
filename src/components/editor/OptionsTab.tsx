@@ -7,6 +7,10 @@ import type { Quotation } from "@/lib/types";
 export function OptionsTab({ quote }: { quote: Quotation }) {
   const update = useQuotations((s) => s.update);
   const set = (patch: Partial<Quotation>) => update(quote.id, patch);
+  const photoCount = quote.categories.reduce(
+    (n, c) => n + c.items.filter((i) => i.image).length,
+    0,
+  );
 
   return (
     <div className="space-y-4">
@@ -25,6 +29,16 @@ export function OptionsTab({ quote }: { quote: Quotation }) {
             checked={quote.showQty}
             onChange={(v) => set({ showQty: v })}
             label="Show the quantity column"
+          />
+          <Toggle
+            checked={quote.showItemPhotos}
+            onChange={(v) => set({ showItemPhotos: v })}
+            label="Show line photos"
+            description={
+              photoCount > 0
+                ? `${photoCount} line${photoCount === 1 ? " has" : "s have"} a photo. The photo column only appears when at least one line uses it — turn this off to send a plain list.`
+                : "No line has a photo yet. Add one from the Photo button on any line in step 2, and the column appears by itself."
+            }
           />
           <Toggle
             checked={quote.showSummaryPage}
@@ -62,7 +76,7 @@ export function OptionsTab({ quote }: { quote: Quotation }) {
             Android are all a little different.
           </li>
         </ol>
-        <p className="mt-3 rounded-lg bg-paper p-2.5 text-xs text-ink-soft">
+        <p className="mt-3 rounded-md bg-paper p-2.5 text-xs text-ink-soft">
           The PDF comes from the same page you see in the preview, so what you look at is what you
           send — with selectable text, not a screenshot. Want it on paper instead? Same window, just
           pick your printer.

@@ -92,7 +92,7 @@ function Shell({
 }) {
   return (
     <div className="no-print fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-3">
-      <div className="flex max-h-[90vh] w-full max-w-md flex-col overflow-hidden rounded-xl bg-white shadow-2xl">
+      <div className="flex max-h-[90vh] w-full max-w-md flex-col overflow-hidden rounded-md bg-white shadow-2xl">
         <header className="flex items-start justify-between gap-3 border-b border-line px-5 py-4">
           <div>
             <h2 className="text-base font-semibold">{title}</h2>
@@ -231,7 +231,7 @@ export function ExportDialog({
             type="button"
             onClick={() => setPlatform(p)}
             className={cx(
-              "rounded-full border px-2.5 py-1 text-xs font-medium transition",
+              "rounded-sm border px-2.5 py-1 text-xs font-medium transition",
               platform === p
                 ? "border-brand bg-brand-light text-brand"
                 : "border-line text-ink-soft hover:border-ink/25 hover:text-ink",
@@ -245,7 +245,7 @@ export function ExportDialog({
       <ol className="space-y-2.5">
         {steps.map(([label, detail], i) => (
           <li key={label} className="flex gap-3">
-            <span className="flex h-6 w-6 flex-none items-center justify-center rounded-full bg-brand text-xs font-bold text-white">
+            <span className="flex h-6 w-6 flex-none items-center justify-center rounded-sm bg-brand text-xs font-bold text-white">
               {i + 1}
             </span>
             <span className="text-sm">
@@ -256,7 +256,7 @@ export function ExportDialog({
         ))}
       </ol>
 
-      <p className="mt-4 flex items-start gap-2 rounded-lg bg-paper p-2.5 text-xs text-ink-soft">
+      <p className="mt-4 flex items-start gap-2 rounded-md bg-paper p-2.5 text-xs text-ink-soft">
         <IconPrint className="mt-0.5 h-4 w-4 flex-none" />
         <span>
           Printing on paper instead? Same window — just pick your printer rather than “Save as PDF”.
