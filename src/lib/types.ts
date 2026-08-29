@@ -39,6 +39,35 @@ export interface Category {
   items: LineItem[];
 }
 
+/** The internal owner who created and maintains the quotation. */
+export interface QuotationAuthor {
+  /** Stable enough for the local MVP; replace with the database user id later. */
+  id: string;
+  name: string;
+  email: string;
+}
+
+export type QuotationShareMethod = "link" | "email";
+export type QuotationSharePermission = "view" | "edit";
+
+/** One immutable sharing event, ready to become a database row later. */
+export interface QuotationShareRecord {
+  id: string;
+  snapshotId: string;
+  createdAt: string;
+  method: QuotationShareMethod;
+  recipientEmails: string[];
+  quotationVersion: number;
+  access: "anyone_with_link";
+  permission: QuotationSharePermission;
+}
+
+export interface QuotationSharing {
+  mode: "private" | "snapshot";
+  lastSharedAt: string | null;
+  shareCount: number;
+  records: QuotationShareRecord[];
+}
 
 export interface Quotation {
   id: string;
@@ -51,6 +80,10 @@ export interface Quotation {
   ref: string;
   createdAt: string;
   updatedAt: string;
+
+  // ---- Ownership & sharing ------------------------------------------------
+  author: QuotationAuthor;
+  sharing: QuotationSharing;
 
   // ---- Header / project details -------------------------------------------
   projectName: string;

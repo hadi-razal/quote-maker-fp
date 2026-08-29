@@ -452,12 +452,17 @@ const PAGE_CONTENT_PX = (297 - 12 - 16) * MM; // A4 height minus the page paddin
 const FOOTER_PX = 13 * MM; // footer strip reserved at the bottom of every page
 const SAFETY_PX = 4 * MM; // slack so rounding never spills a row into the footer
 
-/** Two splits are the same when every page holds the same rows in the same order. */
-function sameSplit(a: DocRow[][], b: DocRow[][]): boolean {
+/**
+ * Two page sets are the same only when both the pagination and the current row
+ * objects match. Keys alone are not enough: editing a line keeps its key but
+ * replaces its data, and retaining the old row object would leave the detailed
+ * BOQ preview stale while the cover totals update.
+ */
+function samePages(a: DocRow[][], b: DocRow[][]): boolean {
   if (a.length !== b.length) return false;
   return a.every((page, i) => {
     const other = b[i];
-    return page.length === other.length && page.every((row, j) => row.key === other[j].key);
+    return page.length === other.length && page.every((row, j) => row === other[j]);
   });
 }
 
@@ -558,7 +563,7 @@ function useRowPages(quote: Quotation, rows: DocRow[]) {
     // Runs after every render and only writes when the split actually moved,
     // so any edit — a longer description, a new column, a wider number — is
     // picked up without having to enumerate what can change a row's height.
-    setPages((previous) => (sameSplit(previous, result) ? previous : result));
+    setPages((previous) => (samePages(previous, result) ? previous : result));
   });
 
   const measurer = (

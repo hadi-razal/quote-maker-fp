@@ -3,7 +3,15 @@
 import { useSyncExternalStore } from "react";
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
-import type { Category, LineItem, Quotation, QuotationImage } from "./types";
+import { authorFromEmail } from "./auth";
+import type {
+  Category,
+  LineItem,
+  Quotation,
+  QuotationAuthor,
+  QuotationImage,
+  QuotationShareRecord,
+} from "./types";
 import { DEFAULT_CATEGORY_TITLES, DEFAULT_TERMS } from "./presets";
 
 /** A quotation can be revised up to this many times before you start a new one. */
@@ -108,7 +116,11 @@ export function emptyCategory(title = "", withItem = true): Category {
   };
 }
 
-export function newQuotation(ref: string, starter: boolean): Quotation {
+export function newQuotation(
+  ref: string,
+  starter: boolean,
+  author: QuotationAuthor = authorFromEmail(null),
+): Quotation {
   const now = new Date().toISOString();
   return {
     id: uid(),
@@ -118,6 +130,8 @@ export function newQuotation(ref: string, starter: boolean): Quotation {
     ref,
     createdAt: now,
     updatedAt: now,
+    author,
+    sharing: { mode: "private", lastSharedAt: null, shareCount: 0, records: [] },
     projectName: "",
     clientName: "",
     clientCompany: "",
@@ -151,8 +165,8 @@ export function newQuotation(ref: string, starter: boolean): Quotation {
 
 interface QuotationState {
   quotations: Quotation[];
-  create: (starter?: boolean) => Quotation;
-  duplicate: (id: string) => Quotation | undefined;
+  create: (starter?: boolean, author?: QuotationAuthor) => Quotation;
+  duplicate: (id: string, author?: QuotationAuthor) => Quotation | undefined;
   remove: (id: string) => void;
   get: (id: string) => Quotation | undefined;
   /** Every version of one quotation, oldest first. */
@@ -161,6 +175,8 @@ interface QuotationState {
   createVersion: (id: string) => Quotation | undefined;
 
   update: (id: string, patch: Partial<Quotation>) => void;
+  recordShare: (id: string, record: QuotationShareRecord) => void;
+  importSharedCopy: (source: Quotation, recipientEmail?: string) => Quotation;
 
   addCategory: (id: string, title?: string) => void;
   updateCategory: (id: string, catId: string, patch: Partial<Category>) => void;
@@ -229,6 +245,7 @@ export const useQuotations = create<QuotationState>()(
             quoteDate: today(),
             createdAt: now,
             updatedAt: now,
+            sharing: { mode: "private", lastSharedAt: null, shareCount: 0, records: [] },
           };
           copy.categories = copy.categories.map((c) => ({
             ...c,
@@ -239,13 +256,13 @@ export const useQuotations = create<QuotationState>()(
           return copy;
         },
 
-        create: (starter = true) => {
-          const quote = newQuotation(nextRef(get().quotations), starter);
+        create: (starter = true, author) => {
+          const quote = newQuotation(nextRef(get().quotations), starter, author);
           set((state) => ({ quotations: [quote, ...state.quotations] }));
           return quote;
         },
 
-        duplicate: (id) => {
+        duplicate: (id, author) => {
           const source = get().quotations.find((q) => q.id === id);
           if (!source) return undefined;
           const now = new Date().toISOString();
@@ -260,6 +277,8 @@ export const useQuotations = create<QuotationState>()(
             quoteDate: today(),
             createdAt: now,
             updatedAt: now,
+            author: author ?? source.author,
+            sharing: { mode: "private", lastSharedAt: null, shareCount: 0, records: [] },
           };
           copy.categories = copy.categories.map((c) => ({
             ...c,
@@ -274,6 +293,48 @@ export const useQuotations = create<QuotationState>()(
           set((state) => ({ quotations: state.quotations.filter((q) => q.id !== id) })),
 
         update: (id, patch) => patchQuote(id, (q) => ({ ...q, ...patch })),
+
+        recordShare: (id, record) =>
+          set((state) => ({
+            quotations: state.quotations.map((q) =>
+              q.id === id
+                ? {
+                    ...q,
+                    sharing: {
+                      mode: "snapshot",
+                      lastSharedAt: record.createdAt,
+                      shareCount: q.sharing.shareCount + 1,
+                      // Keep local storage bounded; the database version can retain full history.
+                      records: [record, ...(q.sharing.records ?? [])].slice(0, 20),
+                    },
+                  }
+                : q,
+            ),
+          })),
+
+        importSharedCopy: (source, recipientEmail) => {
+          const now = new Date().toISOString();
+          const copy: Quotation = {
+            ...structuredClone(source),
+            id: uid(),
+            familyId: uid(),
+            version: 1,
+            versionNote: `Editable copy shared from ${source.ref}`,
+            ref: nextRef(get().quotations),
+            quoteDate: today(),
+            createdAt: now,
+            updatedAt: now,
+            author: recipientEmail ? authorFromEmail(recipientEmail) : source.author,
+            sharing: { mode: "private", lastSharedAt: null, shareCount: 0, records: [] },
+          };
+          copy.categories = copy.categories.map((category) => ({
+            ...category,
+            id: uid(),
+            items: category.items.map((item) => ({ ...item, id: uid() })),
+          }));
+          set((state) => ({ quotations: [copy, ...state.quotations] }));
+          return copy;
+        },
 
         addCategory: (id, title = "") =>
           patchQuote(id, (q) => ({ ...q, categories: [...q.categories, emptyCategory(title)] })),
@@ -341,7 +402,7 @@ export const useQuotations = create<QuotationState>()(
     },
     {
       name: "fairplatz-quotations",
-      version: 3,
+      version: 6,
       storage: createJSONStorage(() => guardedStorage),
       migrate: (persisted, from) => {
         const state = persisted as { quotations?: Quotation[] };
@@ -357,6 +418,45 @@ export const useQuotations = create<QuotationState>()(
           state.quotations = (state.quotations ?? []).map((q) => ({
             ...q,
             showItemPhotos: q.showItemPhotos ?? true,
+          }));
+        }
+        if (from < 4) {
+          state.quotations = (state.quotations ?? []).map((q) => {
+            const inferredAuthor = authorFromEmail(q.preparedByEmail);
+            return {
+              ...q,
+              author: q.author ?? {
+                ...inferredAuthor,
+                name: q.preparedBy.trim() || inferredAuthor.name,
+              },
+              sharing: q.sharing ?? {
+                mode: "private",
+                lastSharedAt: null,
+                shareCount: 0,
+                records: [],
+              },
+            };
+          });
+        }
+        if (from < 5) {
+          state.quotations = (state.quotations ?? []).map((q) => ({
+            ...q,
+            sharing: {
+              ...q.sharing,
+              records: q.sharing.records ?? [],
+            },
+          }));
+        }
+        if (from < 6) {
+          state.quotations = (state.quotations ?? []).map((q) => ({
+            ...q,
+            sharing: {
+              ...q.sharing,
+              records: (q.sharing.records ?? []).map((record) => ({
+                ...record,
+                permission: record.permission ?? "view",
+              })),
+            },
           }));
         }
         return state as QuotationState;

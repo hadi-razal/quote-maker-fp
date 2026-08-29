@@ -3,10 +3,18 @@
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
+import { ShareDialog } from "@/components/editor/ShareDialog";
 import { askConfirm } from "@/components/ui/confirm";
 import { Button, IconButton, TextInput, cx } from "@/components/ui/controls";
-import { IconClose, IconCopy, IconPlus, IconTrash } from "@/components/ui/icons";
-import { signOut, useSession } from "@/lib/auth";
+import {
+  IconClose,
+  IconCopy,
+  IconPlus,
+  IconSearch,
+  IconShare,
+  IconTrash,
+} from "@/components/ui/icons";
+import { authorFromEmail, signOut, useSession } from "@/lib/auth";
 import { computeTotals, formatMoney, validate } from "@/lib/calc";
 import { setLocalFlag, useLocalFlag } from "@/lib/localFlag";
 import { COMPANY } from "@/lib/presets";
@@ -34,16 +42,7 @@ interface Family {
   issues: number;
 }
 
-function Stat({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
-  return (
-    <div className="border-line bg-white px-4 py-3 not-last:border-r">
-      <div className={cx("text-xl font-semibold tabular-nums", accent ? "text-brand" : "text-ink")}>
-        {value}
-      </div>
-      <div className="mt-0.5 text-xs tracking-wide text-ink-soft uppercase">{label}</div>
-    </div>
-  );
-}
+type DashboardFilter = "all" | "mine" | "shared" | "needs-review";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -51,12 +50,16 @@ export default function DashboardPage() {
   const create = useQuotations((s) => s.create);
   const duplicate = useQuotations((s) => s.duplicate);
   const remove = useQuotations((s) => s.remove);
+  const recordShare = useQuotations((s) => s.recordShare);
   const hydrated = useHydrated();
   const { email } = useSession();
 
   const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState<DashboardFilter>("all");
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [sharingQuote, setSharingQuote] = useState<Quotation | null>(null);
   const helpDismissed = useLocalFlag(HELP_KEY);
+  const sessionAuthor = useMemo(() => authorFromEmail(email), [email]);
 
   const all = useMemo<Family[]>(() => {
     const byFamily = new Map<string, Quotation[]>();
@@ -75,26 +78,42 @@ export default function DashboardPage() {
 
   const families = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return all;
-    return all.filter(({ latest }) =>
-      [latest.ref, latest.projectName, latest.clientCompany, latest.clientName, latest.venue]
-        .join(" ")
-        .toLowerCase()
-        .includes(q),
-    );
-  }, [all, query]);
+    return all.filter(({ latest, issues }) => {
+      const matchesQuery =
+        !q ||
+        [
+          latest.ref,
+          latest.projectName,
+          latest.clientCompany,
+          latest.clientName,
+          latest.venue,
+          latest.author.name,
+          latest.author.email,
+        ]
+          .join(" ")
+          .toLowerCase()
+          .includes(q);
+      const matchesFilter =
+        filter === "all" ||
+        (filter === "mine" && latest.author.email.toLowerCase() === email?.toLowerCase()) ||
+        (filter === "shared" && latest.sharing.mode === "snapshot") ||
+        (filter === "needs-review" && issues > 0);
+      return matchesQuery && matchesFilter;
+    });
+  }, [all, email, filter, query]);
 
   const ready = all.filter((f) => f.issues === 0).length;
+  const shared = all.filter((f) => f.latest.sharing.mode === "snapshot").length;
 
   const openNew = () => {
-    const quote = create(true);
+    const quote = create(true, sessionAuthor);
     router.push(`/quote/${quote.id}`);
   };
 
   return (
     <div className="min-h-[100dvh] bg-paper">
-      <header className="sticky top-0 z-30 border-b border-line bg-white/95 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-9xl items-center gap-3 px-4 py-3 sm:px-6 lg:px-8">
+      <header className="sticky top-0 z-30 border-b border-line bg-white/95 shadow-[0_1px_10px_rgba(29,29,27,0.04)] backdrop-blur">
+        <div className="mx-auto flex w-full max-w-9xl items-center gap-3 px-4 py-3.5 sm:px-6 lg:px-8">
           <Image
             src={COMPANY.logo}
             alt="Fairplatz"
@@ -124,7 +143,7 @@ export default function DashboardPage() {
             >
               Sign out
             </button>
-            <Button variant="primary" onClick={openNew}>
+            <Button variant="primary" onClick={openNew} className="px-4">
               <IconPlus /> <span className="hidden sm:inline">New quotation</span>
               <span className="sm:hidden">New</span>
             </Button>
@@ -132,36 +151,61 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-9xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
-        <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+      <main className="mx-auto w-full max-w-9xl px-4 py-6 sm:px-6 sm:py-9 lg:px-8">
+        <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Quotations</h1>
-            <p className="mt-1 text-sm text-ink-soft">
-              Saved on this computer as you type. Copy an old one to start a new job in seconds.
+            <p className="mb-1 text-[11px] font-semibold tracking-[0.12em] text-brand uppercase">
+              Sales workspace
+            </p>
+            <h1 className="text-2xl font-semibold tracking-tight sm:text-3xl">
+              Quotation workspace
+            </h1>
+            <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-ink-soft">
+              Create, revise, share and export client-ready exhibition quotations. Every change
+              saves on this computer automatically.
             </p>
           </div>
-          <TextInput
-            placeholder="Search project, client or ref…"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            className="w-full sm:w-72"
-          />
+          <label className="relative w-full sm:w-80">
+            <span className="sr-only">Search quotations</span>
+            <IconSearch className="pointer-events-none absolute top-1/2 left-3 z-10 h-4 w-4 -translate-y-1/2 text-ink-soft" />
+            <TextInput
+              placeholder="Search project, client or reference…"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              className="pl-9"
+            />
+          </label>
         </div>
 
         {hydrated && all.length > 0 ? (
-          <div className="mb-5 grid grid-cols-3 overflow-hidden rounded-md border border-line">
-            <Stat label="Quotations" value={String(all.length)} />
-            <Stat label="Ready to send" value={String(ready)} />
-            <Stat
-              label="Still to finish"
-              value={String(all.length - ready)}
-              accent={all.length - ready > 0}
-            />
+          <div className="mb-6 flex flex-wrap items-center gap-1.5" aria-label="Filter quotations">
+            {(
+              [
+                ["all", "All", all.length],
+                ["mine", "Owned by me", all.filter((f) => f.latest.author.email.toLowerCase() === email?.toLowerCase()).length],
+                ["shared", "Shared", shared],
+                ["needs-review", "Needs review", all.length - ready],
+              ] as const
+            ).map(([value, label, count]) => (
+              <button
+                key={value}
+                type="button"
+                onClick={() => setFilter(value)}
+                className={cx(
+                  "rounded-full border px-3 py-1.5 text-xs font-semibold transition",
+                  filter === value
+                    ? "border-ink bg-ink text-white"
+                    : "border-line bg-white text-ink-soft hover:border-ink/25 hover:text-ink",
+                )}
+              >
+                {label} <span className="ml-1 opacity-70 tabular-nums">{count}</span>
+              </button>
+            ))}
           </div>
         ) : null}
 
         {!helpDismissed ? (
-          <section className="relative mb-5 rounded-md border border-line bg-white p-4 sm:p-5">
+          <section className="relative mb-6 rounded-xl border border-line bg-white p-4 shadow-[0_4px_18px_rgba(29,29,27,0.035)] sm:p-5">
             <button
               type="button"
               onClick={() => setLocalFlag(HELP_KEY, true)}
@@ -175,10 +219,10 @@ export default function DashboardPage() {
               {[
                 ["Fill in five short steps", "Project details, then your items and prices."],
                 ["Watch the PDF build itself", "The A4 page redraws itself as you type."],
-                ["Download and send", "One button. No Excel, no formatting."],
+                ["Share or download", "Send a view-only or editable link, or save a polished PDF."],
               ].map(([title, body], i) => (
-                <li key={title} className="flex gap-2.5">
-                  <span className="flex h-6 w-6 flex-none items-center justify-center rounded-md bg-brand text-xs font-bold text-white">
+                <li key={title} className="flex gap-3 rounded-lg bg-paper/70 p-3">
+                  <span className="flex h-7 w-7 flex-none items-center justify-center rounded-lg bg-brand text-xs font-bold text-white shadow-sm">
                     {i + 1}
                   </span>
                   <span>
@@ -194,14 +238,27 @@ export default function DashboardPage() {
         {!hydrated ? (
           <p className="py-16 text-center text-sm text-ink-soft">Loading…</p>
         ) : families.length === 0 ? (
-          <div className="rounded-md border border-dashed border-line bg-white px-5 py-14 text-center sm:py-16">
-            <h2 className="text-base font-semibold">
-              {all.length === 0 ? "Nothing here yet" : "Nothing matches that search"}
+          <div className="rounded-2xl border border-dashed border-line bg-white px-5 py-14 text-center shadow-[0_8px_30px_rgba(29,29,27,0.035)] sm:py-20">
+            <Image
+              src={COMPANY.mark}
+              alt=""
+              width={144}
+              height={116}
+              className="mx-auto mb-4 h-10 w-auto"
+            />
+            <h2 className="text-lg font-semibold tracking-tight">
+              {all.length === 0
+                ? "Nothing here yet"
+                : filter !== "all"
+                  ? "Nothing in this view"
+                  : "Nothing matches that search"}
             </h2>
-            <p className="mx-auto mt-1 mb-4 max-w-sm text-sm text-ink-soft">
+            <p className="mx-auto mt-1.5 mb-5 max-w-md text-sm leading-relaxed text-ink-soft">
               {all.length === 0
                 ? "A new quotation starts with the usual Fairplatz categories — carpentry, electrical, AV, graphics — ready to fill in."
-                : "Try a different project name, client or reference."}
+                : filter !== "all"
+                  ? "Choose another filter or search for a different quotation."
+                  : "Try a different project name, client or reference."}
             </p>
             {all.length === 0 ? (
               <Button variant="primary" onClick={openNew}>
@@ -210,7 +267,7 @@ export default function DashboardPage() {
             ) : null}
           </div>
         ) : (
-          <div className="overflow-hidden rounded-md border border-line bg-white">
+          <div className="overflow-hidden rounded-xl border border-line bg-white shadow-[0_4px_20px_rgba(29,29,27,0.035)]">
             <div className="hidden grid-cols-[minmax(0,1fr)_9rem_7rem_5.5rem] gap-4 border-b border-line bg-paper/70 px-4 py-2 text-xs font-semibold tracking-wide text-ink-soft uppercase lg:grid xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_9rem_7rem_5.5rem]">
               <span>Project</span>
               <span className="hidden xl:block">Client</span>
@@ -223,10 +280,13 @@ export default function DashboardPage() {
               {families.map(({ familyId, latest, versions, issues }) => {
                 const totals = computeTotals(latest);
                 const isOpen = expanded === familyId;
+                const sharedRecipients = [
+                  ...new Set(latest.sharing.records.flatMap((record) => record.recipientEmails)),
+                ];
 
                 return (
                   <li key={familyId}>
-                    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 transition hover:bg-paper/50 lg:grid-cols-[minmax(0,1fr)_9rem_7rem_5.5rem] lg:gap-4 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_9rem_7rem_5.5rem]">
+                    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-4 transition hover:bg-paper/55 lg:grid-cols-[minmax(0,1fr)_9rem_7rem_5.5rem] lg:gap-4 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_9rem_7rem_5.5rem]">
                       <button
                         type="button"
                         onClick={() => router.push(`/quote/${latest.id}`)}
@@ -245,18 +305,31 @@ export default function DashboardPage() {
                             </span>
                           ) : null}
                           {issues > 0 ? (
-                            <span className="rounded-sm bg-brand-light px-1.5 py-0.5 text-xs font-medium text-brand">
-                              {issues} left
+                            <span className="rounded-md bg-brand-light px-2 py-1 text-xs font-semibold text-brand">
+                              Needs review
                             </span>
                           ) : (
-                            <span className="rounded-sm bg-emerald-50 px-1.5 py-0.5 text-xs font-medium text-emerald-700">
+                            <span className="rounded-md bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700">
                               Ready
                             </span>
                           )}
+                          {latest.sharing.mode === "snapshot" ? (
+                            <span
+                              title={
+                                sharedRecipients.length > 0
+                                  ? `Shared with ${sharedRecipients.join(", ")}`
+                                  : "Shared by link"
+                              }
+                              className="rounded-md bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-700"
+                            >
+                              Shared{sharedRecipients.length > 0 ? ` · ${sharedRecipients.length}` : ""}
+                            </span>
+                          ) : null}
                         </span>
                         <span className="mt-1 block truncate text-xs text-ink-soft xl:hidden">
                           {[
                             latest.clientCompany || latest.clientName,
+                            `By ${latest.author.name}`,
                             latest.venue,
                             latest.eventDates,
                           ]
@@ -264,7 +337,7 @@ export default function DashboardPage() {
                             .join(" · ") || "No client details yet"}
                         </span>
                         <span className="mt-1 hidden truncate text-xs text-ink-soft xl:block">
-                          {[latest.venue, latest.eventDates].filter(Boolean).join(" · ") ||
+                          {[`By ${latest.author.name}`, latest.venue, latest.eventDates].filter(Boolean).join(" · ") ||
                             "No venue yet"}
                         </span>
                         <span className="mt-1 block text-xs text-ink-soft lg:hidden">
@@ -308,9 +381,15 @@ export default function DashboardPage() {
                           </button>
                         ) : null}
                         <IconButton
+                          label="Share with view or edit access"
+                          onClick={() => setSharingQuote(latest)}
+                        >
+                          <IconShare />
+                        </IconButton>
+                        <IconButton
                           label="Make a copy for a different job"
                           onClick={() => {
-                            const copy = duplicate(latest.id);
+                            const copy = duplicate(latest.id, sessionAuthor);
                             if (copy) router.push(`/quote/${copy.id}`);
                           }}
                         >
@@ -375,6 +454,14 @@ export default function DashboardPage() {
           </div>
         )}
       </main>
+
+      {sharingQuote ? (
+        <ShareDialog
+          quote={sharingQuote}
+          onClose={() => setSharingQuote(null)}
+          onShared={(record) => recordShare(sharingQuote.id, record)}
+        />
+      ) : null}
     </div>
   );
 }

@@ -1,10 +1,11 @@
 "use client";
 
 import Image from "next/image";
+import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { Button, Field, TextInput } from "@/components/ui/controls";
 import { IconWarning } from "@/components/ui/icons";
-import { signIn, useSession } from "@/lib/auth";
+import { signIn, useSession, useSharedEditAccess } from "@/lib/auth";
 import { COMPANY } from "@/lib/presets";
 
 function LoginScreen() {
@@ -20,8 +21,8 @@ function LoginScreen() {
 
   return (
     <div className="flex min-h-[100dvh] items-center justify-center bg-paper px-4 py-10">
-      <div className="grid w-full max-w-3xl overflow-hidden rounded-md border border-line bg-white md:grid-cols-[1fr_1.1fr]">
-        <aside className="hidden flex-col justify-between bg-ink p-8 text-white md:flex">
+      <div className="grid w-full max-w-4xl overflow-hidden rounded-2xl border border-line bg-white shadow-[0_18px_70px_rgba(29,29,27,0.12)] md:grid-cols-[1fr_1.05fr]">
+        <aside className="hidden min-h-[31rem] flex-col justify-between bg-ink p-10 text-white md:flex">
           <Image
             src={COMPANY.logoLight}
             alt="Fairplatz"
@@ -31,12 +32,13 @@ function LoginScreen() {
             priority
           />
           <div>
-            <p className="text-xl leading-snug font-semibold">
-              Quotations that build
-              <br />
-              themselves.
+            <p className="text-[11px] font-semibold tracking-[0.14em] text-brand uppercase">
+              Fairplatz workspace
             </p>
-            <p className="mt-3 text-sm text-white/60">
+            <p className="mt-3 text-3xl leading-tight font-semibold tracking-tight">
+              From scope to polished PDF in minutes.
+            </p>
+            <p className="mt-4 max-w-sm text-sm leading-relaxed text-white/60">
               Categories that add up on their own, an A4 page that redraws as you type, and a PDF in
               one click.
             </p>
@@ -46,7 +48,7 @@ function LoginScreen() {
           </p>
         </aside>
 
-        <form onSubmit={submit} className="p-6 sm:p-8">
+        <form onSubmit={submit} className="flex flex-col justify-center p-6 sm:p-10">
           <Image
             src={COMPANY.logo}
             alt="Fairplatz"
@@ -55,9 +57,12 @@ function LoginScreen() {
             priority
             className="h-8 w-auto md:hidden"
           />
-          <h1 className="mt-5 text-lg font-semibold tracking-tight md:mt-0">Sign in</h1>
-          <p className="mt-1 mb-5 text-sm text-ink-soft">
-            The Quotation Maker is for the Fairplatz team.
+          <p className="mt-5 text-[11px] font-semibold tracking-[0.12em] text-brand uppercase md:mt-0">
+            Internal quotation maker
+          </p>
+          <h1 className="mt-2 text-2xl font-semibold tracking-tight">Welcome back</h1>
+          <p className="mt-1.5 mb-6 text-sm leading-relaxed text-ink-soft">
+            Sign in to continue building Fairplatz quotations.
           </p>
 
           <div className="space-y-3">
@@ -108,7 +113,7 @@ function LoginScreen() {
             </p>
           ) : null}
 
-          <Button type="submit" variant="primary" className="mt-5 w-full py-2">
+          <Button type="submit" variant="primary" className="mt-6 w-full py-2.5">
             Sign in
           </Button>
 
@@ -124,7 +129,13 @@ function LoginScreen() {
 
 /** Nothing renders until we know whether there is a session, to avoid a flash of the login form. */
 export function AuthGate({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
   const { status } = useSession();
+  const isPublicShare = pathname === "/shared" || pathname.startsWith("/shared/");
+  const sharedQuoteId = pathname.match(/^\/quote\/([^/]+)$/)?.[1] ?? null;
+  const hasSharedEditAccess = useSharedEditAccess(sharedQuoteId);
+
+  if (isPublicShare || hasSharedEditAccess) return <>{children}</>;
 
   if (status === "loading") {
     return <div className="min-h-[100dvh] bg-paper" />;

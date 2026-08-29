@@ -108,6 +108,48 @@ what moved. Each version keeps its own prices, items and pictures, and prints wi
 Use **Duplicate** on the home screen instead when you want a different job that
 happens to start from an old quotation — that begins a fresh V1.
 
+## Authors and sharing (local MVP)
+
+Every quotation now has an **author** — the internal owner of the working file.
+The author is separate from **Prepared by**, which remains the contact printed in
+the client document. New quotations use the signed-in email automatically, while
+the Details step lets the owner name and email be corrected.
+
+**Share** creates a snapshot URL for the current version with one of two access
+levels. **View only** lets the recipient review, print, or save the quotation as
+PDF. **Can edit** also lets them open a complete working copy in their own browser.
+The editable copy has a new ID and quotation reference, so it never changes the
+author's original. Anyone with the URL can open `/shared` without signing in and
+see who created the quotation. The public view never reads the sender's local
+storage; the snapshot itself is encoded in the URL fragment, which is not sent to
+the web server.
+
+The author can optionally enter one recipient email address before creating the
+snapshot. The app labels the share for that recipient, records a local sharing
+event, and opens the computer's mail app with a ready-to-review subject, message,
+and link. It deliberately says **Open email draft** rather than claiming the
+message was delivered. The `/shared` route also has its own no-index page title,
+description, Open Graph, and Twitter metadata for clean link previews.
+
+This is deliberately an MVP bridge, not a substitute for database permissions:
+
+- a link is frozen at the moment it is created; later edits need a new link;
+- an editable copy is local to the recipient and does not sync changes back to
+  the author;
+- a link cannot be revoked and anyone it is forwarded to can open it;
+- recipient email is descriptive metadata, not an access restriction;
+- email sending/delivery status is not tracked until a server email provider is connected;
+- images are omitted to keep the URL reliable in email and messaging apps;
+- on `localhost`, recipients can only open it on the same computer. After the app
+  is deployed, links work across devices;
+- set `NEXT_PUBLIC_SHARE_URL` to the public app/subdomain if links should use a
+  different origin from the editor.
+
+When Supabase or another backend is connected, `Quotation.author` maps cleanly to
+a user/profile row, `Quotation.sharing` to access metadata, and `src/lib/share.ts`
+can exchange the encoded snapshot for a short database token without changing
+the editor or viewer flow.
+
 ## Where the data lives
 
 In the browser's local storage, on the machine that created it. Nothing is

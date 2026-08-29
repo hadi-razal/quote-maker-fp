@@ -3,6 +3,8 @@
 import { useRef, useState } from "react";
 import { Button, IconButton, Select, TextInput, Textarea, cx } from "@/components/ui/controls";
 import {
+  IconChevronDown,
+  IconChevronRight,
   IconCopy,
   IconDown,
   IconImage,
@@ -13,7 +15,7 @@ import {
 } from "@/components/ui/icons";
 import { askConfirm } from "@/components/ui/confirm";
 import { LibraryPicker } from "./LibraryPicker";
-import { categoryTotal, formatMoney, itemCode, lineAmount } from "@/lib/calc";
+import { categoryTotal, computeTotals, formatMoney, itemCode, lineAmount } from "@/lib/calc";
 import { approxSize, fileToDataUrl } from "@/lib/image";
 import { DEFAULT_CATEGORY_TITLES, UNITS } from "@/lib/presets";
 import { useQuotations } from "@/lib/store";
@@ -69,12 +71,12 @@ function ItemRow({
   return (
     <div
       className={cx(
-        "rounded-md border p-2.5 transition",
+        "rounded-lg border p-3 transition",
         item.optional ? "border-brand/40 bg-brand-light/40" : "border-line bg-white",
       )}
     >
       <div className="flex gap-2">
-        <span className="mt-1.5 w-9 flex-none text-center text-xs font-semibold text-ink-soft tabular-nums">
+        <span className="mt-1.5 flex h-7 w-10 flex-none items-center justify-center rounded-md bg-paper text-xs font-semibold text-ink-soft tabular-nums">
           {code}
         </span>
         <Textarea
@@ -88,9 +90,11 @@ function ItemRow({
         />
       </div>
 
-      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2 pl-0 sm:pl-11">
-        <div className="flex items-center gap-1">
-          <span className="text-xs text-ink-soft">Qty</span>
+      <div className="mt-3 grid grid-cols-2 gap-2 pl-0 sm:grid-cols-4 sm:pl-12">
+        <label className="block">
+          <span className="mb-1 block text-[10px] font-semibold tracking-wide text-ink-soft uppercase">
+            Qty
+          </span>
           <TextInput
             type="number"
             min={0}
@@ -98,25 +102,28 @@ function ItemRow({
             value={item.qty ?? ""}
             invalid={item.qty === null || item.qty <= 0}
             onChange={(e) => set({ qty: numberOrNull(e.target.value) })}
-            className="w-20 text-right tabular-nums"
+            className="text-right tabular-nums"
           />
-        </div>
+        </label>
 
-        <div className="flex items-center gap-1">
-          <span className="text-xs text-ink-soft">Unit</span>
+        <label className="block">
+          <span className="mb-1 block text-[10px] font-semibold tracking-wide text-ink-soft uppercase">
+            Unit
+          </span>
           <TextInput
             list="fp-units"
             placeholder="sqm"
             value={item.unit}
             invalid={item.unit.trim() === ""}
             onChange={(e) => set({ unit: e.target.value })}
-            className="w-20"
           />
-        </div>
+        </label>
 
         {itemised ? (
-          <div className="flex items-center gap-1">
-            <span className="text-xs text-ink-soft">Rate</span>
+          <label className="block">
+            <span className="mb-1 block text-[10px] font-semibold tracking-wide text-ink-soft uppercase">
+              Rate
+            </span>
             <TextInput
               type="number"
               min={0}
@@ -124,23 +131,29 @@ function ItemRow({
               value={item.rate ?? ""}
               invalid={item.rate === null}
               onChange={(e) => set({ rate: numberOrNull(e.target.value) })}
-              className="w-28 text-right tabular-nums"
+              className="text-right tabular-nums"
             />
-          </div>
+          </label>
         ) : null}
 
         {itemised ? (
-          <span
+          <div
             className={cx(
-              "rounded-md bg-paper px-2 py-1.5 text-sm font-semibold tabular-nums",
+              "flex min-h-10 flex-col justify-center rounded-lg bg-paper px-3 py-1.5 text-right",
               item.optional ? "text-ink-soft line-through" : "text-ink",
             )}
           >
-            {formatMoney(amount, quote.currency, false)}
-          </span>
+            <span className="text-[10px] font-semibold tracking-wide text-ink-soft uppercase">
+              Amount
+            </span>
+            <span className="text-sm font-semibold tabular-nums">
+              {formatMoney(amount, quote.currency, false)}
+            </span>
+          </div>
         ) : null}
+      </div>
 
-        <div className="ml-auto flex items-center gap-0.5">
+      <div className="mt-2 flex flex-wrap items-center justify-end gap-0.5 border-t border-line/70 pt-2 sm:ml-12">
           {showNote ? null : (
             <button
               type="button"
@@ -166,6 +179,7 @@ function ItemRow({
           )}
           <button
             type="button"
+            aria-pressed={Boolean(item.optional)}
             onClick={() => set({ optional: !item.optional })}
             className={cx(
               "rounded-sm px-2 py-1 text-xs font-medium transition",
@@ -214,7 +228,6 @@ function ItemRow({
           >
             <IconTrash />
           </IconButton>
-        </div>
       </div>
 
       <input
@@ -294,58 +307,70 @@ function CategoryCard({
   const total = categoryTotal(cat);
 
   return (
-    <section className="rounded-md border border-line bg-paper/60 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
-      <header className="flex flex-wrap items-center gap-2 rounded-t-md border-b border-line bg-white px-3 py-2.5">
+    <section className="rounded-xl border border-line bg-paper/60 shadow-[0_4px_18px_rgba(29,29,27,0.035)]">
+      <header className="rounded-t-xl border-b border-line bg-white p-3">
+        <div className="flex items-start gap-2">
         <button
           type="button"
           onClick={() => setCollapsed((c) => !c)}
-          className="flex h-7 w-7 flex-none items-center justify-center rounded-md bg-ink text-xs font-bold text-white"
-          title={collapsed ? "Expand" : "Collapse"}
+          aria-expanded={!collapsed}
+          aria-label={collapsed ? `Expand ${cat.title || "category"}` : `Collapse ${cat.title || "category"}`}
+          className="mt-1 flex h-8 w-8 flex-none items-center justify-center rounded-lg border border-line text-ink-soft transition hover:bg-paper hover:text-ink"
         >
-          {index + 1}
+          {collapsed ? <IconChevronRight /> : <IconChevronDown />}
         </button>
-        <TextInput
-          value={cat.title}
-          invalid={cat.title.trim() === ""}
-          placeholder="Category name (e.g. Carpentry)"
-          onChange={(e) => updateCategory(quote.id, cat.id, { title: e.target.value })}
-          className="min-w-[9rem] flex-1 basis-full font-semibold sm:basis-auto"
-        />
-
-        <Select
-          value={cat.priceMode}
-          onChange={(e) =>
-            updateCategory(quote.id, cat.id, {
-              priceMode: e.target.value as Category["priceMode"],
-            })
-          }
-          className="w-32 flex-none text-xs"
-          title="Itemised: total is the sum of the lines. Lump sum: one agreed price."
-        >
-          <option value="itemised">Itemised</option>
-          <option value="lump">Lump sum</option>
-        </Select>
-
-        {cat.priceMode === "lump" ? (
           <TextInput
-            type="number"
-            min={0}
-            step="any"
-            placeholder="Category price"
-            value={cat.lumpSum ?? ""}
-            invalid={cat.lumpSum === null}
-            onChange={(e) =>
-              updateCategory(quote.id, cat.id, { lumpSum: numberOrNull(e.target.value) })
-            }
-            className="w-32 flex-none text-right tabular-nums"
+            value={cat.title}
+            invalid={cat.title.trim() === ""}
+            placeholder="Category name (e.g. Carpentry)"
+            onChange={(e) => updateCategory(quote.id, cat.id, { title: e.target.value })}
+            className="min-w-0 flex-1 font-semibold"
           />
-        ) : (
-          <span className="rounded-md bg-ink px-2.5 py-1.5 text-sm font-semibold text-white tabular-nums">
-            {formatMoney(total, quote.currency, false)}
-          </span>
-        )}
 
-        <div className="flex items-center gap-0.5">
+          <span className="mt-1 flex h-8 min-w-8 flex-none items-center justify-center rounded-lg bg-ink px-2 text-xs font-bold text-white">
+            {index + 1}
+          </span>
+        </div>
+
+        <div className="mt-2 flex flex-wrap items-center gap-2 pl-10">
+          <Select
+            value={cat.priceMode}
+            onChange={(e) =>
+              updateCategory(quote.id, cat.id, {
+                priceMode: e.target.value as Category["priceMode"],
+              })
+            }
+            className="w-32 flex-none text-xs"
+            title="Itemised: total is the sum of the lines. Lump sum: one agreed price."
+          >
+            <option value="itemised">Itemised</option>
+            <option value="lump">Lump sum</option>
+          </Select>
+
+          {cat.priceMode === "lump" ? (
+            <TextInput
+              type="number"
+              min={0}
+              step="any"
+              placeholder="Category price"
+              value={cat.lumpSum ?? ""}
+              invalid={cat.lumpSum === null}
+              onChange={(e) =>
+                updateCategory(quote.id, cat.id, { lumpSum: numberOrNull(e.target.value) })
+              }
+              className="w-36 flex-none text-right tabular-nums"
+            />
+          ) : (
+            <span className="rounded-lg bg-brand-light px-3 py-2 text-sm font-semibold text-brand tabular-nums">
+              {formatMoney(total, quote.currency, false)}
+            </span>
+          )}
+
+          <span className="text-xs text-ink-soft">
+            {cat.items.length} line{cat.items.length === 1 ? "" : "s"}
+          </span>
+
+          <div className="ml-auto flex items-center gap-0.5">
           <IconButton
             label="Move category up"
             disabled={index === 0}
@@ -382,12 +407,13 @@ function CategoryCard({
           >
             <IconTrash />
           </IconButton>
+          </div>
         </div>
       </header>
 
       {collapsed ? (
-        <p className="px-3 py-2 text-xs text-ink-soft">
-          {cat.items.length} line{cat.items.length === 1 ? "" : "s"} · hidden
+        <p className="px-4 py-3 text-xs text-ink-soft">
+          Lines hidden · {formatMoney(total, quote.currency)}
         </p>
       ) : (
         <div className="space-y-2 p-3">
@@ -440,6 +466,12 @@ function CategoryCard({
 export function BoqTab({ quote }: { quote: Quotation }) {
   const addCategory = useQuotations((s) => s.addCategory);
   const [newTitle, setNewTitle] = useState("");
+  const totals = computeTotals(quote);
+  const lineCount = quote.categories.reduce((count, category) => count + category.items.length, 0);
+  const optionalCount = quote.categories.reduce(
+    (count, category) => count + category.items.filter((item) => item.optional).length,
+    0,
+  );
 
   const used = new Set(quote.categories.map((c) => c.title.trim().toLowerCase()));
   const suggestions = DEFAULT_CATEGORY_TITLES.filter((t) => !used.has(t.toLowerCase()));
@@ -452,6 +484,35 @@ export function BoqTab({ quote }: { quote: Quotation }) {
         ))}
       </datalist>
 
+      <section className="overflow-hidden rounded-xl bg-ink text-white shadow-sm">
+        <div className="flex items-end justify-between gap-4 border-b border-white/10 px-4 py-4">
+          <div>
+            <p className="text-[11px] font-semibold tracking-[0.12em] text-white/55 uppercase">
+              Bill of quantities
+            </p>
+            <p className="mt-1 text-xs text-white/60">Everything included in this quotation.</p>
+          </div>
+          <div className="text-right">
+            <p className="text-[10px] tracking-wide text-white/50 uppercase">Grand total</p>
+            <p className="text-xl font-semibold tracking-tight tabular-nums">
+              {formatMoney(totals.grandTotal, quote.currency)}
+            </p>
+          </div>
+        </div>
+        <dl className="grid grid-cols-3 divide-x divide-white/10 py-3 text-center">
+          {[
+            ["Categories", quote.categories.length],
+            ["Line items", lineCount],
+            ["Optional", optionalCount],
+          ].map(([label, value]) => (
+            <div key={label}>
+              <dt className="text-[10px] tracking-wide text-white/50 uppercase">{label}</dt>
+              <dd className="mt-0.5 text-sm font-semibold tabular-nums">{value}</dd>
+            </div>
+          ))}
+        </dl>
+      </section>
+
       {quote.categories.map((cat, i) => (
         <CategoryCard
           key={cat.id}
@@ -462,8 +523,8 @@ export function BoqTab({ quote }: { quote: Quotation }) {
         />
       ))}
 
-      <div className="rounded-md border border-dashed border-line bg-white p-3">
-        <div className="flex gap-2">
+      <div className="rounded-xl border border-dashed border-line bg-white p-4">
+        <div className="flex flex-col gap-2 sm:flex-row">
           <TextInput
             placeholder="New category name…"
             value={newTitle}
@@ -477,6 +538,7 @@ export function BoqTab({ quote }: { quote: Quotation }) {
           />
           <Button
             variant="primary"
+            disabled={!newTitle.trim()}
             onClick={() => {
               addCategory(quote.id, newTitle.trim());
               setNewTitle("");
@@ -494,7 +556,7 @@ export function BoqTab({ quote }: { quote: Quotation }) {
                 key={t}
                 type="button"
                 onClick={() => addCategory(quote.id, t)}
-                className="rounded-sm border border-line bg-white px-2.5 py-1 text-xs text-ink-soft transition hover:border-brand hover:text-brand"
+              className="rounded-lg border border-line bg-white px-2.5 py-1.5 text-xs font-medium text-ink-soft transition hover:border-brand hover:text-brand"
               >
                 + {t}
               </button>

@@ -97,6 +97,12 @@ export function formatNumber(value: number | null): string {
  */
 export function validate(q: Quotation): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
+  if (!q.author.name.trim()) {
+    issues.push({ scope: "details", message: "Quotation author name is required" });
+  }
+  if (!q.author.email.trim()) {
+    issues.push({ scope: "details", message: "Quotation author email is required" });
+  }
   const req: Array<[keyof Quotation, string]> = [
     ["projectName", "Project name"],
     ["clientName", "Client / attention name"],

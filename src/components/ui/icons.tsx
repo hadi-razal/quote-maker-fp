@@ -100,3 +100,67 @@ export const IconClose = (p: SVGProps<SVGSVGElement>) => (
     <path d="m4 4 8 8M12 4l-8 8" />
   </svg>
 );
+
+export const IconChevronRight = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <path d="m6 3.5 4.5 4.5L6 12.5" />
+  </svg>
+);
+
+export const IconChevronDown = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <path d="m3.5 6 4.5 4.5L12.5 6" />
+  </svg>
+);
+
+export const IconSearch = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <circle cx="7" cy="7" r="4.5" />
+    <path d="m10.5 10.5 3 3" />
+  </svg>
+);
+
+export const IconShare = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <circle cx="4" cy="8" r="1.7" />
+    <circle cx="11.8" cy="3.8" r="1.7" />
+    <circle cx="11.8" cy="12.2" r="1.7" />
+    <path d="m5.5 7.2 4.8-2.6M5.5 8.8l4.8 2.6" />
+  </svg>
+);
+
+export const IconLink = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <path d="m6.3 9.7-1.1 1.1a2.4 2.4 0 0 1-3.4-3.4l2.1-2.1a2.4 2.4 0 0 1 3.4 0" />
+    <path d="m9.7 6.3 1.1-1.1a2.4 2.4 0 0 1 3.4 3.4l-2.1 2.1a2.4 2.4 0 0 1-3.4 0" />
+    <path d="m6 10 4-4" />
+  </svg>
+);
+
+export const IconUser = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <circle cx="8" cy="5.2" r="2.4" />
+    <path d="M3.2 13.3c.6-2.4 2.2-3.6 4.8-3.6s4.2 1.2 4.8 3.6" />
+  </svg>
+);
+
+export const IconMail = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <rect x="2" y="3.5" width="12" height="9" rx="1.4" />
+    <path d="m3 5 5 4 5-4" />
+  </svg>
+);
+
+export const IconEye = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <path d="M1.5 8s2.4-4 6.5-4 6.5 4 6.5 4-2.4 4-6.5 4S1.5 8 1.5 8Z" />
+    <circle cx="8" cy="8" r="1.7" />
+  </svg>
+);
+
+export const IconEdit = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}>
+    <path d="m3 11.5-.5 2 2-.5 7.8-7.8-1.5-1.5zM9.8 4.7l1.5 1.5" />
+    <path d="M8 3H3.5a1 1 0 0 0-1 1v8.5a1 1 0 0 0 1 1H12a1 1 0 0 0 1-1V8" />
+  </svg>
+);

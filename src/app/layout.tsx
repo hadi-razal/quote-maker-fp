@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from "next";
-import { Analytics } from "@vercel/analytics/next";
-import { SpeedInsights } from "@vercel/speed-insights/next";
 import { AuthGate } from "@/components/auth/AuthGate";
+import { SafeTelemetry } from "@/components/telemetry/SafeTelemetry";
 import { ConfirmHost } from "@/components/ui/confirm";
 import { SITE } from "@/lib/site";
 import "./globals.css";
@@ -69,8 +68,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="print-passthrough">
         <AuthGate>{children}</AuthGate>
         <ConfirmHost />
-        <Analytics />
-        <SpeedInsights />
+        <SafeTelemetry />
       </body>
     </html>
   );

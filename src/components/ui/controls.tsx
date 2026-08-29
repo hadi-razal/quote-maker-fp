@@ -15,8 +15,8 @@ export function cx(...parts: Array<string | false | null | undefined>): string {
 }
 
 const inputBase =
-  "w-full rounded-md border border-line bg-white px-2.5 py-1.5 text-sm text-ink outline-none transition " +
-  "placeholder:text-ink-soft/50 focus:border-brand focus:ring-2 focus:ring-brand/20 disabled:bg-paper";
+  "min-h-10 w-full rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink outline-none transition " +
+  "placeholder:text-ink-soft/50 hover:border-ink/20 focus:border-brand focus:ring-3 focus:ring-brand/15 disabled:cursor-not-allowed disabled:bg-paper disabled:text-ink-soft";
 
 export function Field({
   label,
@@ -36,7 +36,7 @@ export function Field({
   return (
     <label className={cx("block", className)}>
       {label ? (
-        <span className="mb-1 flex items-center gap-1 text-xs font-semibold tracking-wide text-ink-soft uppercase">
+        <span className="mb-1.5 flex items-center gap-1 text-[11px] font-semibold tracking-[0.08em] text-ink-soft uppercase">
           {label}
           {required ? <span className={error ? "text-brand" : "text-ink-soft/60"}>*</span> : null}
         </span>
@@ -130,8 +130,8 @@ export function Textarea({
 type Variant = "primary" | "secondary" | "ghost" | "danger";
 
 const variants: Record<Variant, string> = {
-  primary: "bg-brand text-white hover:bg-brand-dark shadow-sm",
-  secondary: "bg-white text-ink border border-line hover:border-ink/30 hover:bg-paper",
+  primary: "bg-brand text-white hover:bg-brand-dark shadow-[0_2px_8px_rgba(234,78,27,0.22)]",
+  secondary: "bg-white text-ink border border-line hover:border-ink/30 hover:bg-paper shadow-sm",
   ghost: "text-ink-soft hover:bg-black/5 hover:text-ink",
   danger: "text-brand hover:bg-brand-light",
 };
@@ -151,8 +151,8 @@ export function Button({
       ref={ref}
       {...props}
       className={cx(
-        "inline-flex items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium",
-        "transition disabled:cursor-not-allowed disabled:opacity-45",
+        "inline-flex min-h-9 items-center justify-center gap-1.5 rounded-lg px-3.5 py-2 text-sm font-semibold",
+        "transition focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-brand/20 disabled:cursor-not-allowed disabled:opacity-45",
         variants[variant],
         className,
       )}
@@ -172,8 +172,8 @@ export function IconButton({
       aria-label={label}
       {...props}
       className={cx(
-        "inline-flex h-7 w-7 items-center justify-center rounded-md text-ink-soft transition",
-        "hover:bg-black/5 hover:text-ink disabled:cursor-not-allowed disabled:opacity-30",
+        "inline-flex h-8 w-8 items-center justify-center rounded-lg text-ink-soft transition",
+        "hover:bg-black/5 hover:text-ink focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-brand/20 disabled:cursor-not-allowed disabled:opacity-30",
         className,
       )}
     />
@@ -194,8 +194,10 @@ export function Toggle({
   return (
     <button
       type="button"
+      role="switch"
+      aria-checked={checked}
       onClick={() => onChange(!checked)}
-      className="flex w-full items-start gap-3 rounded-md border border-line bg-white p-3 text-left transition hover:border-ink/20"
+      className="flex w-full items-start gap-3 rounded-lg border border-line bg-white p-3.5 text-left shadow-sm transition hover:border-ink/25"
     >
       <span
         className={cx(
@@ -232,11 +234,11 @@ export function SectionCard({
   children: ReactNode;
 }) {
   return (
-    <section className="rounded-md border border-line bg-white p-4 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
-      <header className="mb-3 flex items-start justify-between gap-3">
+    <section className="rounded-xl border border-line bg-white p-4 shadow-[0_4px_18px_rgba(29,29,27,0.035)] sm:p-5">
+      <header className="mb-4 flex items-start justify-between gap-3">
         <div>
-          <h3 className="text-sm font-semibold text-ink">{title}</h3>
-          {description ? <p className="mt-0.5 text-xs text-ink-soft">{description}</p> : null}
+          <h3 className="text-base font-semibold tracking-tight text-ink">{title}</h3>
+          {description ? <p className="mt-1 text-xs leading-relaxed text-ink-soft">{description}</p> : null}
         </div>
         {action}
       </header>
